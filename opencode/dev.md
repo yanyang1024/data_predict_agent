@@ -1,1196 +1,837 @@
-下面这版按**当前 OpenCode dev 分支的结构**来写，尽量做到“你照着文件一个个改，就能做出第一版”。我会把方案定成：**保留 OpenCode 原生 skill 发现与 session API，只额外加一个 `skill-store` 层**。这样最稳，因为当前服务端源码已经有 `GET /skill`，`Skill.Info` 里也已经带了 `name / description / location / content`；会话 API 也已经有 `POST /session`、`POST /session/:id/message`，并支持 `noReply` 注入上下文。另一个关键点是：当前 `opencode web` 的 catch-all 仍然会把未知路径代理到 `https://app.opencode.ai`，所以如果你要“改官方自带 WebUI”，只改 `packages/app` 还不够，还要一起改 `packages/opencode/src/server/server.ts` 的最后那段 fallback。([GitHub][1])
+我先给结论：
 
-还有一个设计前提：我建议把商店 UI 元数据放在单独的 `store.json`，不要硬塞进 `SKILL.md` frontmatter。因为官方技能文档明确写了 frontmatter 只识别 `name`、`description`、`license`、`compatibility`、`metadata`，未知字段会被忽略。这样你既不破坏 OpenCode 原生 skill 规范，又能给商店页面单独做分类、标签、示例提问、封面图之类的 UI 元数据。([OpenCode][2])
+**最适合你的路线，不是先硬改 OpenCode 核心，而是把 OpenCode 当“推理与会话引擎”，把 OpenWork 当“技能商店与业务壳层”。**
+原因很直接：OpenWork 现在真正的交互 UI 在 `packages/app`，服务层在 `packages/server`；这个 server 已经是一个面向远程客户端的、基于文件系统的 API，而且已经有 `GET /workspace/:id/skills` / `POST /workspace/:id/skills` 这类技能接口。反过来，OpenCode 公开的 server 文档重点是 session、message、command、file、agent、event 等通用能力，没有把“技能商店”作为一等公民 API 暴露出来。([GitHub][1])
 
----
-
-## 一、建议你最终改成的文件结构
-
-### 后端
-
-```text
-packages/opencode/src/skill/store.ts                 // 新增：技能商店层
-packages/opencode/src/server/routes/skill-store.ts   // 新增：商店 API
-packages/opencode/src/server/server.ts               // 修改：挂载 skill-store 路由；可选替换 web fallback
-```
-
-### 前端
-
-```text
-packages/app/src/lib/skill-store.ts                  // 新增：前端 API 封装
-packages/app/src/pages/skills/index.tsx              // 新增：技能商店列表页
-packages/app/src/pages/skills/detail.tsx             // 新增：技能详情页
-packages/app/src/components/skill-card.tsx           // 新增：技能卡片
-packages/app/src/components/skill-filter-bar.tsx     // 新增：搜索/筛选
-packages/app/src/components/skill-mode-header.tsx    // 新增：聊天页顶部技能条
-packages/app/src/app.tsx                             // 修改：新增 skills 路由
-packages/app/src/pages/home.tsx                      // 修改：给最近项目增加“打开技能商店”
-packages/app/src/pages/session.tsx                   // 修改：显示 skill mode header
-```
-
-### 测试
-
-```text
-packages/opencode/src/server/routes/skill-store.test.ts
-packages/app/src/lib/skill-store.test.ts
-packages/app/src/pages/skills/index.test.tsx
-packages/app/e2e/skill-store.spec.ts
-```
-
-当前前端已经有 `pages/home.tsx`、`pages/session.tsx`，首页也确实在展示最近项目并通过 `openProject()` 跳目录；聊天页已经在用 `SessionHeader` / `NewSessionView` 这一套组件，所以把“技能商店”加成新的同级页面、把“技能模式头部”塞进 session 页，是比较顺着现有 UI 结构的改法。`packages/app` 也已经自带 Bun 单测和 Playwright E2E 脚本。([GitHub][3])
+再补一个很关键的判断：**如果你想改 OpenCode 自带的 Web 前端，当前应该看的是 `anomalyco/opencode` 仓库里的 `packages/app`，不是 `packages/web`。** 现在这个仓库会跳转到 `anomalyco/opencode`；其中 `packages/app` 是 Solid + Vite 的前端应用，README 还明确提到它的 E2E 测试依赖本地 `localhost:4096` 的 opencode backend；而 `packages/web` 当前看起来是文档站而不是聊天 UI。OpenCode 文档里的“Web”页也只强调了会话和服务器状态。([GitHub][2])
 
 ---
 
-## 二、skill 目录里新增的 `store.json`
+## 我调研后的核心判断
 
-每个技能目录建议长这样：
+### 1）OpenWork 其实已经“半只脚”做成了技能商店
+
+OpenWork 自己就定位成一个“帮助你运行 agents / skills / MCP”的外壳；它强调 extensible、local/remote，还把 skills 和 opencode plugins 视为可安装模块。更重要的是，现有 `packages/app/src/app/pages/skills.tsx` 已经有这些能力：
+已安装技能列表、hub 技能列表、导入本地 skill、安装 hub skill、读取/保存 skill，以及“新建 skill 时直接创建会话并预填 `/skill-creator`”。也就是说，你想要的“技能商店”并不是从 0 开始。缺的主要是：**把任意 skill 变成一种可进入的对话模式**。([GitHub][1])
+
+### 2）OpenWork server 天生适合做“本地 skill 目录扫描器”
+
+OpenWork 的架构文档写得很明确：浏览器运行时不能随便读写本地文件，所以凡是 `.opencode/`、`SKILL.md`、`opencode.json` 相关的读取、编辑、打开目录，都应该通过 host-side service，也就是 `packages/server` 来做。现有 `skills.ts` 还已经实现了不少你要的基础能力：
+它会从当前工作目录一路向上扫到 git root，读取 `.opencode/skills`、`.claude/skills`，可选再加全局 `~/.config/opencode/skills`、`~/.claude/skills`、`~/.agents/skills`；还能从 frontmatter 或 “When to use” 段落里提取 trigger，并按 skill name 去重。([GitHub][3])
+
+### 3）OpenCode 后端已经足够支撑“skill 模式对话”，第一版不必改核心
+
+OpenCode 的 server API 文档显示，`POST /session/:id/message` 支持 `system`、`agent`、`tools` 等参数；同时它还有原生 `skill` 工具，可以把某个 `SKILL.md` 加载进对话。也就是说，**你完全可以在 OpenWork UI 里实现一个“skill mode”**：
+当用户选择某个 skill 后，后续发送消息时自动附加一段 system prompt，明确要求模型优先加载并遵循该 skill。这个做法复用现有 OpenCode 能力，侵入性最低。([OpenCode][4])
+
+### 4）但如果你要“官方级”的 skill-mode，会涉及 OpenCode 核心、SDK、Web App 三层联动
+
+因为当前公开的 OpenCode API 列表里，没有单独的 `/skill` 列表接口；如果你希望“任何第三方客户端”都能原生支持 skill store，而不依赖 OpenWork server，就要在 OpenCode core 里补 skill 列表 / 详情 / 会话 skill-mode 的 API，然后更新 OpenAPI / SDK，再改它自己的 `packages/app`。OpenCode 仓库当前也确实有清晰的模块边界：`packages/opencode/src/server/routes`、`src/session`、`src/skill`、`packages/sdk/openapi.json`、`packages/app`。([OpenCode][4])
+
+---
+
+# 推荐落地方案
+
+## 方案 A：推荐，改 OpenWork，不改 OpenCode 核心
+
+这是我最建议你做的版本。
+
+### 架构分层
 
 ```text
-pr-review/
-  SKILL.md
-  store.json
-  cover.png
+你的 Chatbot WebUI（基于 OpenWork packages/app）
+        │
+        ├─ 调 OpenWork Server（packages/server）
+        │    ├─ 扫描技能目录
+        │    ├─ 读取 SKILL.md
+        │    ├─ 安装/卸载 hub skill
+        │    ├─ 管理自定义 skill roots
+        │    └─ 生成“skill mode”配置
+        │
+        └─ 调 OpenCode Server（opencode serve）
+             ├─ 创建 session
+             ├─ 发送消息
+             ├─ SSE 流式事件
+             ├─ 调用 skill tool
+             └─ 使用 agent / tools / permissions
 ```
 
-`store.json` 示例：
+### 为什么这条路最好
+
+第一，OpenWork 已经有 skills 页面和 server。
+第二，OpenCode 已经有会话、消息、事件、skill tool。
+第三，OpenWork 架构文档明确说，文件系统相关动作应该走 server。
+所以你只要把两者拼好，就能很快做出一个可用版本。([GitHub][5])
+
+---
+
+# WebUI 交互逻辑
+
+## 1. 左侧导航
+
+建议保留 3 个一级入口：
+
+* 对话
+* 技能商店
+* 设置
+
+第一版不要把入口做太多。对新手用户来说，“对话”和“技能商店”分清楚就够了。
+
+---
+
+## 2. 技能商店页
+
+### 页面结构
+
+顶部一排筛选：
+
+* 来源：当前工作区 / 全局 / Hub / 全部
+* 路径：默认路径 / 自定义路径
+* 搜索框：按 name / description / trigger 搜
+* 排序：最近安装 / 名称 / 推荐
+
+中间区域用卡片流展示 skill。
+
+### 每个 skill 卡片建议显示
+
+* skill 名称
+* 一句话 description
+* 来源标签：workspace / global / hub / custom
+* trigger 或 “When to use” 摘要
+* 操作按钮：
+
+  * 查看详情
+  * 安装 / 更新
+  * 编辑
+  * 开始技能对话
+
+### 点击“查看详情”
+
+右侧 Drawer 或 Modal 展示：
+
+* skill 名
+* description
+* 来源路径
+* `SKILL.md` 正文预览
+* “适合什么时候用”
+* “开始技能对话”
+* “复制分享链接”或“导出”
+
+这部分和 OpenWork 当前 `skills.tsx` 的交互很接近，只是你需要把“开始技能对话”做成一等按钮。OpenWork 现有 skills 页已经有 read/save/share/install 的骨架。([GitHub][6])
+
+---
+
+## 3. 进入“技能模式对话”
+
+用户点“开始技能对话”后：
+
+1. 如果当前没有会话，就新建一个 session。
+2. 如果当前有会话，弹一个轻量选择：
+
+   * 在新会话中打开
+   * 在当前会话中切换到此技能
+3. 成功后跳到会话页，并在顶部显示：
+
+   * `技能模式：xxx`
+   * `退出技能模式`
+   * `切换技能`
+
+### 会话页变化
+
+在 skill mode 下：
+
+* 标题栏显示 skill badge
+* 输入框上方显示 2～4 个 starter prompts
+* 第一条 assistant welcome message 可以说明：
+
+  * 当前启用了哪个 skill
+  * 这个 skill 适合做什么
+  * 给用户几个示例提问
+
+### 非常重要的产品约束
+
+**V1 一次只允许一个活动 skill。**
+不要一上来就做“多 skill 叠加”。这样逻辑会变得很难解释，也很难测。
+
+---
+
+## 4. 对话发送逻辑
+
+当某个 session 处于 skill mode 时，每次发送消息前都做这件事：
+
+* 把 `activeSkill` 从前端状态或 OpenWork server 取出来
+* 拼一个稳定的 `system` 指令
+* 发送到 OpenCode 的 message 接口
+
+建议 system prompt 模板类似：
+
+```text
+You are in skill mode "<skill-name>".
+Always treat this skill as the primary workflow for this session.
+Load and follow the skill "<skill-name>" using the native skill tool when needed.
+If the user asks for something outside this skill, explain that briefly and ask whether to exit skill mode.
+Do not silently switch to another skill.
+```
+
+这样做的好处是：
+
+* 不需要把整个 `SKILL.md` 每轮都塞进 prompt
+* token 更稳定
+* 模型还能按需调用原生 `skill` tool 去读 skill 内容
+
+这条路径成立，是因为 OpenCode 的 message API 支持 `system` 参数，而原生 `skill` tool 又能把 `SKILL.md` 加载进对话。([OpenCode][4])
+
+---
+
+# 设计方案
+
+## 一、核心数据结构
+
+建议你先定义这几个类型：
+
+```ts
+type SkillSource = "workspace" | "global" | "hub" | "custom";
+
+type SkillSummary = {
+  name: string;
+  description: string;
+  trigger?: string;
+  path?: string;
+  scope?: "project" | "global";
+  source: SkillSource;
+};
+
+type SkillDetail = SkillSummary & {
+  content: string;
+  installed: boolean;
+  editable: boolean;
+};
+
+type SessionSkillMode = {
+  sessionId: string;
+  skillName: string;
+  skillPath?: string;
+  source: SkillSource;
+  enabledAt: number;
+  starterPrompts: string[];
+  pinned: boolean; // 是否每轮都注入 system
+};
+```
+
+---
+
+## 二、后端接口设计
+
+### 尽量复用现有接口
+
+OpenWork server 已经有：
+
+* `GET /workspace/:id/skills`
+* `POST /workspace/:id/skills`
+* hub 安装相关能力
+* `POST /workspace/:id/engine/reload`
+
+所以不要重造轮子。([GitHub][5])
+
+### 建议新增接口
+
+我建议你新增 4 个：
+
+#### 1）`GET /workspace/:id/skills/:name`
+
+返回 skill 详情：
 
 ```json
 {
-  "displayName": "PR Review",
-  "category": "code-review",
-  "tags": ["review", "git", "pr"],
-  "icon": "shield-check",
-  "cover": "cover.png",
+  "name": "api-review",
+  "description": "Review an API design and suggest improvements",
+  "trigger": "Use when reviewing API contracts",
+  "path": "/repo/.opencode/skills/api-review/SKILL.md",
+  "scope": "project",
+  "source": "workspace",
+  "content": "--- ... ---\n# What I do ..."
+}
+```
+
+#### 2）`POST /workspace/:id/skill-mode/resolve`
+
+输入 skill name，输出会话模式配置：
+
+```json
+{
+  "skill": { ...SkillSummary },
+  "systemPrompt": "You are in skill mode ...",
   "starterPrompts": [
-    "帮我审查当前改动",
-    "总结这个 PR 的风险点",
-    "按高/中/低风险列出问题"
-  ],
-  "entryPrompt": "进入 PR Review 技能模式后，请优先按审查、归类、给建议修复步骤的顺序回答。",
-  "recommendedAgent": "plan",
-  "hidden": false
+    "请用这个技能帮我分析...",
+    "请按照这个技能的流程执行...",
+    "先告诉我这个技能适不适合当前问题"
+  ]
 }
 ```
 
-这里的思路是：
+#### 3）`GET /workspace/:id/skill-roots`
 
-* `SKILL.md` 继续给 OpenCode 的原生技能系统用。
-* `store.json` 只给你的商店 UI 用。
-* `hidden` 可以让你先把某些技能藏起来，不在商店展示。
-* `starterPrompts` 给详情页做快捷问题按钮。
+读取自定义 skill 目录列表。
+
+#### 4）`PATCH /workspace/:id/skill-roots`
+
+允许用户配置额外扫描目录。
 
 ---
 
-## 三、后端第一部分：`packages/opencode/src/skill/store.ts`
+## 三、关于“特定路径下所有 skill”的实现建议
 
-这个文件的职责只有 4 个：
+这里要分成两个层级。
 
-1. 复用 `Skill.all()` 拿到已发现的技能。
-2. 从 `location` 同目录里读取 `store.json`。
-3. 组装出“适合商店页显示”的 catalog。
-4. 提供一个 `buildBootstrapPrompt()`，让 `start-session` 能把 skill mode 注入到会话里。
+### MVP
 
-当前 `Skill.Info` 已经包含 `location` 和 `content`，而当前技能加载器除了标准 `.opencode/skills`、`.claude/skills`、`.agents/skills` 这些目录外，dev 源码里还会额外扫描 `config.skills?.paths` 与 `config.skills?.urls`。所以你做商店层时，不需要再重写一次技能发现，直接站在 `Skill.all()` 上做二次加工最省事。([GitHub][4])
+先支持这几类路径：
 
-### 伪代码骨架
+* 当前 workspace 下的 `.opencode/skills`
+* 向上到 git root 的继承路径
+* 全局路径
+* hub
+
+这其实 OpenWork 现有逻辑已经覆盖得差不多了。([GitHub][7])
+
+### 增强版
+
+如果你说的“特定路径”是任意自定义目录，比如：
+
+* `/data/company-skills`
+* `/mnt/shared/skills`
+* `D:\team\skills`
+
+那就不要直接让前端传一个本地路径然后浏览器去扫。
+正确做法是：
+
+1. 把这些目录保存到 OpenWork server 配置里
+2. 由 server 负责扫描
+3. 扫描结果返回给前端
+4. 每个结果附带 `source: "custom"` 和 `rootLabel`
+
+这样才符合 OpenWork 自己的“browser 不能直接读本地文件”的架构原则。([GitHub][3])
+
+---
+
+# 二次开发步骤：推荐版（基于 OpenWork，尽量不改 OpenCode 核心）
+
+## 第 0 步：先把开发环境跑起来
+
+### OpenWork
+
+OpenWork README 现在建议在 repo 根目录：
+
+```bash
+git checkout dev
+git pull --ff-only origin dev
+pnpm install --frozen-lockfile
+```
+
+根目录脚本里也有 `dev:ui`，会启动 `@different-ai/openwork-ui`。([GitHub][1])
+
+### OpenCode backend
+
+你的自定义前端更适合连 `opencode serve`，因为它就是纯 HTTP server；如果是浏览器跨域访问，要加 `--cors`。如果不是纯本地回环，还应该加密码保护。([OpenCode][4])
+
+例如：
+
+```bash
+opencode serve --port 4096 --cors http://localhost:5173
+```
+
+如果你想临时看官方 Web，也可以：
+
+```bash
+opencode web --port 4096 --cors http://localhost:5173
+```
+
+但我不建议把 `opencode web` 当你自己的生产前端入口，因为它会拉起官方 UI。文档里也说明 `opencode web` 主打的是浏览器里查看会话和服务器状态。([OpenCode][8])
+
+### OpenWork server
+
+本地开发时，可以把 approvals 开到自动，否则每次写入都要审批：
+
+```bash
+OPENWORK_APPROVAL_MODE=auto pnpm --filter openwork-server dev
+```
+
+OpenWork server README 明确写了写操作默认受 host approval 保护，本地开发可以设 `OPENWORK_APPROVAL_MODE=auto`。([GitHub][5])
+
+---
+
+## 第 1 步：先补后端“技能详情”和“自定义目录”
+
+### 改哪些文件
+
+OpenWork 这边重点看这些文件：
+
+* `packages/server/src/types.ts`
+* `packages/server/src/skills.ts`
+* `packages/server/src/server.ts`
+
+这些路径和现有 skills 能力都已经在仓库里。([GitHub][9])
+
+### 1.1 在 `types.ts` 增加类型
+
+新增：
+
+* `SkillDetail`
+* `SkillRoot`
+* `ResolvedSkillMode`
+
+示例：
 
 ```ts
-// packages/opencode/src/skill/store.ts
-import z from "zod"
-import path from "path"
-import os from "os"
-import { Skill } from "./skill"
-import { Config } from "../config/config"
-import { Filesystem } from "@/util/filesystem"
-import { PermissionNext } from "@/permission/next"
+export interface SkillDetail extends SkillItem {
+  content: string;
+  source: "workspace" | "global" | "hub" | "custom";
+  root?: string;
+}
 
-export namespace SkillStore {
-  export const Meta = z.object({
-    displayName: z.string().min(1).optional(),
-    category: z.string().default("uncategorized"),
-    tags: z.array(z.string()).default([]),
-    icon: z.string().optional(),
-    cover: z.string().optional(),
-    starterPrompts: z.array(z.string()).default([]),
-    entryPrompt: z.string().optional(),
-    recommendedAgent: z.string().optional(),
-    hidden: z.boolean().default(false),
-  }).passthrough()
-
-  export type Meta = z.infer<typeof Meta>
-
-  export const CatalogItem = z.object({
-    name: z.string(),
-    description: z.string(),
-    displayName: z.string(),
-    category: z.string(),
-    tags: z.array(z.string()),
-    icon: z.string().optional(),
-    cover: z.string().optional(),
-    starterPrompts: z.array(z.string()),
-    recommendedAgent: z.string().optional(),
-
-    permissionState: z.enum(["allow", "ask", "deny"]),
-    canStart: z.boolean(),
-
-    // 不建议把真实绝对路径直接回给前端
-    hasDetail: z.boolean(),
-  })
-
-  export type CatalogItem = z.infer<typeof CatalogItem>
-
-  async function loadStoreMeta(skill: Skill.Info): Promise<Meta> {
-    const dir = path.dirname(skill.location)
-    const file = path.join(dir, "store.json")
-
-    if (!(await Filesystem.exists(file))) {
-      return Meta.parse({})
-    }
-
-    try {
-      const raw = await Bun.file(file).text()
-      return Meta.parse(JSON.parse(raw))
-    } catch (err) {
-      // 不要让一个坏的 store.json 把整个商店打挂
-      console.warn("[skill-store] invalid store.json", skill.name, err)
-      return Meta.parse({})
-    }
-  }
-
-  async function getStoreRoots(): Promise<string[]> {
-    const config = await Config.get()
-    return (config.skills?.paths ?? []).map((p) => {
-      const expanded = p.startsWith("~/") ? path.join(os.homedir(), p.slice(2)) : p
-      return path.resolve(expanded)
-    })
-  }
-
-  function isUnderRoots(file: string, roots: string[]) {
-    if (roots.length === 0) return true
-    const resolved = path.resolve(file)
-    return roots.some((root) => resolved.startsWith(root + path.sep) || resolved === root)
-  }
-
-  function permissionStateOf(skillName: string, agent?: { permission?: unknown }) {
-    if (!agent) return "allow"
-    return PermissionNext.evaluate("skill", skillName, agent.permission).action
-  }
-
-  export async function catalog(opts?: {
-    q?: string
-    agent?: { permission?: unknown }
-    scope?: "store" | "all"
-  }): Promise<CatalogItem[]> {
-    const skills = await Skill.all()
-    const roots = opts?.scope === "all" ? [] : await getStoreRoots()
-
-    const rows = await Promise.all(
-      skills.map(async (skill) => {
-        if (!isUnderRoots(skill.location, roots)) return null
-
-        const meta = await loadStoreMeta(skill)
-        if (meta.hidden) return null
-
-        const permissionState = permissionStateOf(skill.name, opts?.agent)
-
-        const item: CatalogItem = {
-          name: skill.name,
-          description: skill.description,
-          displayName: meta.displayName ?? skill.name,
-          category: meta.category,
-          tags: meta.tags,
-          icon: meta.icon,
-          cover: meta.cover,
-          starterPrompts: meta.starterPrompts,
-          recommendedAgent: meta.recommendedAgent,
-          permissionState,
-          canStart: permissionState !== "deny",
-          hasDetail: true,
-        }
-
-        if (!opts?.q) return item
-
-        const text = [
-          item.name,
-          item.displayName,
-          item.description,
-          item.category,
-          ...item.tags,
-        ].join(" ").toLowerCase()
-
-        return text.includes(opts.q.toLowerCase()) ? item : null
-      }),
-    )
-
-    return rows.filter(Boolean) as CatalogItem[]
-  }
-
-  export async function detail(name: string, agent?: { permission?: unknown }) {
-    const skill = await Skill.get(name)
-    if (!skill) return null
-
-    const meta = await loadStoreMeta(skill)
-    const permissionState = permissionStateOf(skill.name, agent)
-
-    return {
-      ...CatalogItem.parse({
-        name: skill.name,
-        description: skill.description,
-        displayName: meta.displayName ?? skill.name,
-        category: meta.category,
-        tags: meta.tags,
-        icon: meta.icon,
-        cover: meta.cover,
-        starterPrompts: meta.starterPrompts,
-        recommendedAgent: meta.recommendedAgent,
-        permissionState,
-        canStart: permissionState !== "deny",
-        hasDetail: true,
-      }),
-      entryPrompt: meta.entryPrompt,
-      content: skill.content, // 详情页可选显示原文
-    }
-  }
-
-  export function buildBootstrapPrompt(input: {
-    name: string
-    displayName: string
-    description: string
-    content: string
-    entryPrompt?: string
-  }) {
-    return [
-      "你现在处于专用技能模式。",
-      `当前技能: ${input.displayName} (${input.name})`,
-      `技能说明: ${input.description}`,
-      "",
-      "请把下面的技能内容视为当前会话的优先工作流。",
-      "若用户后续要求与技能流程冲突，请先说明冲突点，再按用户明确意图继续。",
-      "",
-      input.entryPrompt ? `额外入口要求: ${input.entryPrompt}` : "",
-      "",
-      "===== SKILL CONTENT BEGIN =====",
-      input.content,
-      "===== SKILL CONTENT END =====",
-    ].filter(Boolean).join("\n")
-  }
+export interface ResolvedSkillMode {
+  skill: SkillDetail;
+  systemPrompt: string;
+  starterPrompts: string[];
 }
 ```
 
-### 这个文件为什么这样拆
+### 1.2 在 `skills.ts` 拆出更通用的扫描函数
 
-这样拆的好处是：
+现在 `listSkills()` 已经能扫约定目录。你可以继续抽一层：
 
-* `Skill.all()` 还是原汁原味，不影响官方原生 skill 流程。
-* 商店层只负责“展示”和“专用模式启动”。
-* 后面你要加 `rating`、`author`、`version`、`examples`，都改 `store.json` 和 `SkillStore.Meta` 就行。
+* `scanSkillRoot(root, scope, source)`
+* `getSkillDetail(workspaceRoot, name, options?)`
+* `listSkillsFromConfiguredRoots(workspaceRoot, roots)`
 
----
-
-## 四、后端第二部分：`packages/opencode/src/server/routes/skill-store.ts`
-
-这个路由文件建议做 3 个接口就够了：
-
-* `GET /skill-store`：商店列表
-* `GET /skill-store/:name`：技能详情
-* `POST /skill-store/:name/start-session`：一键进入技能模式对话
-
-我建议你**不要**让前端自己串联“先建 session，再注入上下文，再发首条消息”。这一步合成成一个后端接口，前端会简单很多，也不容易出现中间一步成功、中间一步失败的半残状态。当前服务器 API 本来就已经提供了 `POST /session` 建会话，以及 `POST /session/:id/message` + `noReply` 注入上下文。([OpenCode][5])
-
-### 伪代码骨架
-
-```ts
-// packages/opencode/src/server/routes/skill-store.ts
-import { Hono } from "hono"
-import z from "zod"
-import { describeRoute, resolver, validator } from "hono-openapi"
-import { SkillStore } from "@/skill/store"
-import { Session } from "@/session"
-import { Agent } from "@/agent/agent"
-// 这里的 Session / Agent 函数名按现有 namespace 风格写
-// 是伪代码骨架，不保证与你本地分支 1:1
-
-const StartBody = z.object({
-  agent: z.string().optional(),
-  model: z.string().optional(),
-  initialUserMessage: z.string().optional(),
-  confirmAsk: z.boolean().default(false),
-  title: z.string().optional(),
-})
-
-export function SkillStoreRoutes() {
-  const app = new Hono()
-
-  app.get(
-    "/",
-    describeRoute({
-      summary: "List skill store catalog",
-      operationId: "skillStore.list",
-      responses: {
-        200: {
-          description: "Catalog items",
-          content: {
-            "application/json": {
-              schema: resolver(SkillStore.CatalogItem.array()),
-            },
-          },
-        },
-      },
-    }),
-    validator("query", z.object({
-      q: z.string().optional(),
-      agent: z.string().optional(),
-      scope: z.enum(["store", "all"]).optional(),
-    })),
-    async (c) => {
-      const { q, agent: agentName, scope } = c.req.valid("query")
-      const agent = agentName ? await Agent.get(agentName) : undefined
-      const list = await SkillStore.catalog({ q, agent, scope })
-      return c.json(list)
-    },
-  )
-
-  app.get(
-    "/:name",
-    describeRoute({
-      summary: "Get skill store detail",
-      operationId: "skillStore.detail",
-      responses: {
-        200: { description: "Skill detail" },
-        404: { description: "Skill not found" },
-      },
-    }),
-    validator("param", z.object({ name: z.string() })),
-    validator("query", z.object({ agent: z.string().optional() })),
-    async (c) => {
-      const { name } = c.req.valid("param")
-      const { agent: agentName } = c.req.valid("query")
-      const agent = agentName ? await Agent.get(agentName) : undefined
-
-      const detail = await SkillStore.detail(name, agent)
-      if (!detail) return c.json({ message: "skill not found" }, 404)
-      return c.json(detail)
-    },
-  )
-
-  app.post(
-    "/:name/start-session",
-    describeRoute({
-      summary: "Create a new session in skill mode",
-      operationId: "skillStore.startSession",
-      responses: {
-        200: { description: "Session created" },
-        403: { description: "Skill denied" },
-        404: { description: "Skill not found" },
-        409: { description: "Need confirmation" },
-      },
-    }),
-    validator("param", z.object({ name: z.string() })),
-    validator("json", StartBody),
-    async (c) => {
-      const { name } = c.req.valid("param")
-      const body = c.req.valid("json")
-
-      const agent = body.agent ? await Agent.get(body.agent) : undefined
-      const detail = await SkillStore.detail(name, agent)
-
-      if (!detail) {
-        return c.json({ message: "skill not found" }, 404)
-      }
-
-      if (detail.permissionState === "deny") {
-        return c.json({ message: "skill denied" }, 403)
-      }
-
-      if (detail.permissionState === "ask" && !body.confirmAsk) {
-        return c.json({
-          message: "need confirmation",
-          requiresConfirmation: true,
-        }, 409)
-      }
-
-      const title =
-        body.title ??
-        `[${detail.displayName}] ${detail.description}`.slice(0, 80)
-
-      // 1) 创建 session
-      const session = await Session.create({
-        title,
-      })
-
-      // 2) 注入 skill mode bootstrap，不触发回复
-      const bootstrap = SkillStore.buildBootstrapPrompt({
-        name: detail.name,
-        displayName: detail.displayName,
-        description: detail.description,
-        content: detail.content,
-        entryPrompt: detail.entryPrompt,
-      })
-
-      await Session.prompt(session.id, {
-        agent: body.agent ?? detail.recommendedAgent,
-        model: body.model,
-        noReply: true,
-        parts: [
-          {
-            type: "text",
-            text: bootstrap,
-          },
-        ],
-      })
-
-      // 3) 如果详情页点的是“示例问题”，可顺手再发第一条用户消息
-      let firstResponse = null
-      if (body.initialUserMessage?.trim()) {
-        firstResponse = await Session.prompt(session.id, {
-          agent: body.agent ?? detail.recommendedAgent,
-          model: body.model,
-          parts: [
-            {
-              type: "text",
-              text: body.initialUserMessage.trim(),
-            },
-          ],
-        })
-      }
-
-      return c.json({
-        sessionID: session.id,
-        title: session.title,
-        skill: {
-          name: detail.name,
-          displayName: detail.displayName,
-          description: detail.description,
-          category: detail.category,
-          tags: detail.tags,
-          starterPrompts: detail.starterPrompts,
-        },
-        firstResponse,
-      })
-    },
-  )
-
-  return app
-}
-```
-
-### 这里最值得注意的 3 个点
-
-第一，`ask / allow / deny` 最好在这里统一处理。官方权限模型对 skill 就是这三种行为；`ask` 很适合映射成“用户点击按钮后二次确认一次”。([OpenCode][2])
-
-第二，**建议每次加载技能都新建一个 session**，不要把 skill mode 直接塞进用户正在聊的旧会话。这样上下文最干净，技能边界也清晰。
-
-第三，退出 skill mode 时，最好不是“只是把 badge 隐藏掉”，而是**fork 一个不带技能标识的新 session**。因为 skill bootstrap 已经进入会话历史了，单纯隐藏 UI 并不会真的让模型忘掉它。官方会话 API 本身就有 `POST /session/:id/fork`。([OpenCode][5])
-
----
-
-## 五、后端第三部分：改 `packages/opencode/src/server/server.ts`
-
-### 1）先挂载新路由
-
-当前 `server.ts` 已经在用 Hono + `describeRoute`/`validator` 的风格挂 `project`、`session`、`provider` 等路由，也已经直接暴露了 `GET /skill`。所以你的新路由完全可以照这个风格加进去。([GitHub][1])
+### 1.3 新增“读取 skill 详情”
 
 伪代码：
 
 ```ts
-// server.ts
-import { SkillStoreRoutes } from "./routes/skill-store"
-
-export const createApp = (opts: { cors?: string[] }): Hono => {
-  const app = new Hono()
-
-  return app
-    // ...已有中间件
-    .route("/project", ProjectRoutes())
-    .route("/session", SessionRoutes())
-    .route("/skill-store", SkillStoreRoutes())   // <-- 新增
-    // ...已有其他路由
+export async function getSkillDetail(workspaceRoot: string, name: string): Promise<SkillDetail> {
+  const skills = await listSkills(workspaceRoot, true);
+  const target = skills.find((x) => x.name === name);
+  if (!target) throw new ApiError(404, "skill_not_found", `Skill not found: ${name}`);
+  const content = await readFile(target.path, "utf8");
+  return {
+    ...target,
+    content,
+    source: target.scope === "global" ? "global" : "workspace",
+  };
 }
 ```
 
-### 2）如果你要深改 `opencode web`，必须改最后的 fallback
+### 1.4 支持自定义 roots
 
-当前源码最后是：
+最简单的做法：
 
-* 对所有未命中的路径 `.all("/*")`
-* `proxy("https://app.opencode.ai${path}")`
+* server 维护一个 `skillRoots: string[]`
+* 每个 root 用和 `listSkillsInDir()` 类似的逻辑去扫
+* 返回时给每个 skill 带上 `source: "custom"` 和 `root`
 
-这意味着你只改前端源码，`opencode web` 也不一定会直接打开你的本地改版 UI。([GitHub][1])
+---
 
-你可以先做一个最简单的开发版：
+## 第 2 步：在 `server.ts` 暴露新接口
+
+建议至少加两个：
+
+### `GET /workspace/:id/skills/:name`
+
+读 skill 详情。
+
+### `POST /workspace/:id/skill-mode/resolve`
+
+返回：
+
+* skill 详情
+* systemPrompt
+* starterPrompts
+
+伪代码：
 
 ```ts
-// server.ts 最后那段 catch-all，伪代码
-.all("/*", async (c) => {
-  const devUI = process.env.OPENCODE_WEB_APP_URL
+app.post("/workspace/:id/skill-mode/resolve", async (req, res) => {
+  const { name } = await req.json();
+  const skill = await getSkillDetail(workspaceRoot, name);
 
-  if (devUI) {
-    // 开发模式：代理到你自己的 Vite dev server
-    return proxy(`${devUI}${c.req.path}`, {
-      ...c.req,
-      headers: {
-        ...c.req.raw.headers,
-      },
-    })
-  }
+  const systemPrompt = [
+    `You are in skill mode "${skill.name}".`,
+    `Treat this skill as the primary workflow for the session.`,
+    `Load and follow the skill "${skill.name}" using the native skill tool when needed.`,
+    `If the task is outside this skill, say so briefly and ask whether to exit skill mode.`,
+  ].join(" ");
 
-  // 生产模式：返回你打包好的 dist/index.html
-  const distDir = "/absolute/path/to/packages/app/dist"
-  const reqPath = c.req.path === "/" ? "/index.html" : c.req.path
-  const filePath = path.join(distDir, reqPath)
+  const starterPrompts = buildStarterPrompts(skill);
 
-  if (await Filesystem.exists(filePath)) {
-    return c.body(await Bun.file(filePath).arrayBuffer())
-  }
-
-  return c.html(await Bun.file(path.join(distDir, "index.html")).text())
-})
+  res.json({ skill, systemPrompt, starterPrompts });
+});
 ```
 
-如果你暂时不想改这一段，另一条更轻的路是：先跑 `opencode serve --cors ...`，自己单独起一个前端。官方 web/server 文档都明确支持给浏览器客户端配 CORS，自定义前端是被支持的。([OpenCode][6])
+### 一个很实用的小优化
+
+OpenWork 现有 skills 逻辑已经会提取 `trigger`。你可以直接拿它来生成 starter prompts。([GitHub][7])
 
 ---
 
-## 六、前端 API 层：`packages/app/src/lib/skill-store.ts`
+## 第 3 步：前端补“技能商店 → 技能模式”闭环
 
-一个很实用的小建议：**你自己的 `skill-store` 接口先别强依赖 SDK codegen**，直接做一个薄薄的 `fetch` 封装。因为当前 SDK 文档里 `App` 下面列的是 `app.log()` 和 `app.agents()`，但当前服务端源码实际上已经有 `GET /skill`。也就是说，文档层和源码层在这里存在轻微不同步，你自己新增的 `/skill-store` 更没必要等 SDK 再生成一轮。([OpenCode][7])
+### 改哪些文件
 
-### 伪代码骨架
+建议从这些入口动手：
+
+* `packages/app/src/app/types.ts`
+* `packages/app/src/app/lib/openwork-server.ts`
+* `packages/app/src/app/pages/skills.tsx`
+* `packages/app/src/app/pages/session.tsx`
+* `packages/app/src/app/context/session.ts`
+* `packages/app/src/app/state/sessions.ts`
+
+这些目录都在当前 OpenWork app 结构里。([GitHub][10])
+
+### 3.1 在 `types.ts` 定义前端状态
 
 ```ts
-// packages/app/src/lib/skill-store.ts
-export type SkillCatalogItem = {
-  name: string
-  description: string
-  displayName: string
-  category: string
-  tags: string[]
-  icon?: string
-  cover?: string
-  starterPrompts: string[]
-  recommendedAgent?: string
-  permissionState: "allow" | "ask" | "deny"
-  canStart: boolean
-  hasDetail: boolean
-}
-
-export type SkillDetail = SkillCatalogItem & {
-  entryPrompt?: string
-  content: string
-}
-
-function withDirectory(url: string, directory?: string) {
-  const u = new URL(url, window.location.origin)
-  if (directory) u.searchParams.set("directory", directory)
-  return u.toString()
-}
-
-export async function listSkillStore(input: {
-  directory?: string
-  q?: string
-  agent?: string
-  scope?: "store" | "all"
-}) {
-  const url = new URL("/skill-store", window.location.origin)
-  if (input.q) url.searchParams.set("q", input.q)
-  if (input.agent) url.searchParams.set("agent", input.agent)
-  if (input.scope) url.searchParams.set("scope", input.scope)
-  if (input.directory) url.searchParams.set("directory", input.directory)
-
-  const res = await fetch(url)
-  if (!res.ok) throw new Error("failed to list skill store")
-  return (await res.json()) as SkillCatalogItem[]
-}
-
-export async function getSkillDetail(name: string, input: {
-  directory?: string
-  agent?: string
-}) {
-  const url = new URL(`/skill-store/${encodeURIComponent(name)}`, window.location.origin)
-  if (input.agent) url.searchParams.set("agent", input.agent)
-  if (input.directory) url.searchParams.set("directory", input.directory)
-
-  const res = await fetch(url)
-  if (!res.ok) throw new Error("failed to get skill detail")
-  return (await res.json()) as SkillDetail
-}
-
-export async function startSkillSession(name: string, body: {
-  directory?: string
-  agent?: string
-  model?: string
-  initialUserMessage?: string
-  confirmAsk?: boolean
-  title?: string
-}) {
-  const url = new URL(`/skill-store/${encodeURIComponent(name)}/start-session`, window.location.origin)
-  if (body.directory) url.searchParams.set("directory", body.directory)
-
-  const res = await fetch(url, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify(body),
-  })
-
-  if (res.status === 409) {
-    return {
-      requiresConfirmation: true,
-      ...(await res.json()),
-    }
-  }
-
-  if (!res.ok) throw new Error("failed to start skill session")
-  return await res.json()
-}
+export type SessionSkillMode = {
+  skillName: string;
+  skillPath?: string;
+  source: "workspace" | "global" | "hub" | "custom";
+  systemPrompt: string;
+  starterPrompts: string[];
+};
 ```
+
+### 3.2 在 `lib/openwork-server.ts` 增加 API 封装
+
+加两个方法：
+
+* `getSkillDetail(workspaceId, name)`
+* `resolveSkillMode(workspaceId, name)`
+
+### 3.3 修改 `pages/skills.tsx`
+
+当前 skills 页已经有这些 prop：
+
+* `skills`
+* `hubSkills`
+* `installHubSkill`
+* `readSkill`
+* `saveSkill`
+* `createSessionAndOpen`
+* `setPrompt`
+
+你要做的是再加一条主操作：
+
+* `startSkillConversation(skillName)`
+
+现有代码里“新建 skill”已经是：
+先创建 session，再 `setPrompt("/skill-creator")`。
+你可以用同样的思路做“开启 skill mode”，只是这里不是塞 `/skill-creator`，而是设置 session skill mode。([GitHub][6])
+
+### 3.4 在 `context/session.ts` 保存 skill mode
+
+推荐用：
+
+* `sessionId -> SessionSkillMode` 的映射
+* 本地持久化到 localStorage
+
+第一版不用把这个状态写进 OpenCode session 里，因为公开 API 里没有现成的 session metadata 能力。先在 OpenWork 层解决最省事。
 
 ---
 
-## 七、前端页面：技能商店列表页 `packages/app/src/pages/skills/index.tsx`
+## 第 4 步：改发送消息逻辑
 
-这个页面主要做 4 件事：
+这是整件事的核心。
 
-1. 拉列表
-2. 搜索
-3. 分类/标签筛选
-4. 点卡片跳详情
+### 做法
 
-### 伪代码骨架
-
-```tsx
-// packages/app/src/pages/skills/index.tsx
-import { createMemo, createResource, createSignal, For, Show } from "solid-js"
-import { useNavigate, useParams } from "@solidjs/router"
-import { listSkillStore } from "@/lib/skill-store"
-import { SkillCard } from "@/components/skill-card"
-import { SkillFilterBar } from "@/components/skill-filter-bar"
-
-export default function SkillsIndexPage() {
-  const params = useParams()
-  const navigate = useNavigate()
-
-  const directory = createMemo(() => {
-    // 这里用你项目里现有的目录解码工具
-    // 例如 base64Decode(params.dir)
-    return decodeDir(params.dir)
-  })
-
-  const [q, setQ] = createSignal("")
-  const [catalog] = createResource(
-    () => ({ directory: directory(), q: q(), scope: "store" as const }),
-    listSkillStore,
-  )
-
-  return (
-    <div class="flex flex-col gap-4 p-4">
-      <h1 class="text-xl font-semibold">技能商店</h1>
-
-      <SkillFilterBar
-        value={q()}
-        onInput={setQ}
-      />
-
-      <Show when={!catalog.loading} fallback={<div>加载中…</div>}>
-        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          <For each={catalog() ?? []}>
-            {(skill) => (
-              <SkillCard
-                skill={skill}
-                onOpen={() => navigate(`/${params.dir}/skills/${skill.name}`)}
-              />
-            )}
-          </For>
-        </div>
-      </Show>
-    </div>
-  )
-}
-```
-
----
-
-## 八、前端页面：技能详情页 `packages/app/src/pages/skills/detail.tsx`
-
-详情页要重点支持两个动作：
-
-* `立即对话`
-* 点一个 starter prompt 直接“创建 session + 发首问”
-
-### 伪代码骨架
-
-```tsx
-// packages/app/src/pages/skills/detail.tsx
-import { createMemo, createResource, For } from "solid-js"
-import { useNavigate, useParams } from "@solidjs/router"
-import { getSkillDetail, startSkillSession } from "@/lib/skill-store"
-
-export default function SkillDetailPage() {
-  const params = useParams()
-  const navigate = useNavigate()
-
-  const directory = createMemo(() => decodeDir(params.dir))
-  const skillName = createMemo(() => params.name)
-
-  const [detail] = createResource(
-    () => ({ name: skillName(), directory: directory() }),
-    ({ name, directory }) => getSkillDetail(name, { directory }),
-  )
-
-  async function handleStart(initialUserMessage?: string) {
-    const result = await startSkillSession(skillName(), {
-      directory: directory(),
-      agent: detail()?.recommendedAgent,
-      initialUserMessage,
-      confirmAsk: true,
-    })
-
-    if ("requiresConfirmation" in result && result.requiresConfirmation) {
-      const ok = window.confirm("这个技能当前需要确认后才能加载，继续吗？")
-      if (!ok) return
-
-      const secondTry = await startSkillSession(skillName(), {
-        directory: directory(),
-        agent: detail()?.recommendedAgent,
-        initialUserMessage,
-        confirmAsk: true,
-      })
-
-      navigate(`/${params.dir}/session/${secondTry.sessionID}?skill=${skillName()}`)
-      return
-    }
-
-    navigate(`/${params.dir}/session/${result.sessionID}?skill=${skillName()}`)
-  }
-
-  return (
-    <div class="flex flex-col gap-4 p-4">
-      <h1 class="text-xl font-semibold">{detail()?.displayName}</h1>
-      <p class="text-sm opacity-80">{detail()?.description}</p>
-
-      <div class="flex gap-2">
-        <button onClick={() => handleStart()}>立即对话</button>
-      </div>
-
-      <div class="flex flex-wrap gap-2">
-        <For each={detail()?.starterPrompts ?? []}>
-          {(prompt) => (
-            <button onClick={() => handleStart(prompt)}>
-              {prompt}
-            </button>
-          )}
-        </For>
-      </div>
-
-      <details>
-        <summary>查看技能原文</summary>
-        <pre class="whitespace-pre-wrap">{detail()?.content}</pre>
-      </details>
-    </div>
-  )
-}
-```
-
----
-
-## 九、前端组件：技能卡片 `packages/app/src/components/skill-card.tsx`
-
-```tsx
-// packages/app/src/components/skill-card.tsx
-import type { SkillCatalogItem } from "@/lib/skill-store"
-
-export function SkillCard(props: {
-  skill: SkillCatalogItem
-  onOpen: () => void
-}) {
-  return (
-    <button
-      class="rounded-xl border p-4 text-left hover:bg-bg-secondary"
-      onClick={props.onOpen}
-    >
-      <div class="flex items-center justify-between gap-2">
-        <div class="font-medium">{props.skill.displayName}</div>
-        <div class="text-xs opacity-70">{props.skill.permissionState}</div>
-      </div>
-
-      <div class="mt-2 text-sm opacity-80">
-        {props.skill.description}
-      </div>
-
-      <div class="mt-3 flex flex-wrap gap-2">
-        <span class="text-xs rounded px-2 py-1 bg-bg-tertiary">
-          {props.skill.category}
-        </span>
-
-        {props.skill.tags.map((tag) => (
-          <span class="text-xs rounded px-2 py-1 bg-bg-tertiary">
-            {tag}
-          </span>
-        ))}
-      </div>
-    </button>
-  )
-}
-```
-
----
-
-## 十、前端组件：聊天页顶部技能条 `packages/app/src/components/skill-mode-header.tsx`
-
-这个组件建议最小先做成：
-
-* 显示当前 skill
-* 显示“退出技能模式”
-* 退出时最好 fork 新会话
-
-因为上面说过，skill bootstrap 已经写进历史消息了，直接隐藏 badge 不是“真正退出”。官方 session API 有 fork，正好适合这里。([OpenCode][5])
-
-### 伪代码骨架
-
-```tsx
-// packages/app/src/components/skill-mode-header.tsx
-export function SkillModeHeader(props: {
-  skillName: string
-  skillDisplayName?: string
-  onExit: () => void
-}) {
-  return (
-    <div class="mb-3 flex items-center justify-between rounded-lg border px-3 py-2">
-      <div class="flex items-center gap-2">
-        <span class="text-xs rounded bg-bg-tertiary px-2 py-1">技能模式</span>
-        <span class="text-sm font-medium">
-          {props.skillDisplayName ?? props.skillName}
-        </span>
-      </div>
-
-      <button class="text-sm opacity-80 hover:opacity-100" onClick={props.onExit}>
-        退出技能模式
-      </button>
-    </div>
-  )
-}
-```
-
----
-
-## 十一、改 `packages/app/src/pages/session.tsx`
-
-当前 session 页面已经在用 `useParams`、`useSearchParams`、`SessionHeader` 等，所以很适合直接从 query string 读一个 `?skill=pr-review`，然后在 `SessionHeader` 下方插一个 `SkillModeHeader`。([GitHub][8])
-
-### 伪代码骨架
-
-```tsx
-// session.tsx 里新增的核心逻辑
-import { SkillModeHeader } from "@/components/skill-mode-header"
-
-export default function SessionPage() {
-  const params = useParams()
-  const navigate = useNavigate()
-  const [search] = useSearchParams()
-  const sdk = useSDK()
-
-  const skillName = createMemo(() => search.skill)
-
-  async function exitSkillMode() {
-    const sessionID = params.id
-    if (!sessionID) return
-
-    // 真退出：fork 一个新会话，然后不带 ?skill= 跳转
-    const next = await sdk.client.session.fork({
-      path: { id: sessionID },
-      body: {},
-    })
-
-    navigate(`/${params.dir}/session/${next.data.id}`)
-  }
-
-  return (
-    <div>
-      <SessionHeader />
-
-      <Show when={skillName()}>
-        <SkillModeHeader
-          skillName={skillName()!}
-          onExit={exitSkillMode}
-        />
-      </Show>
-
-      {/* 原来的 MessageTimeline / Composer / Review 面板继续保留 */}
-    </div>
-  )
-}
-```
-
----
-
-## 十二、改 `packages/app/src/pages/home.tsx`
-
-当前首页已经有最近项目和 `openProject(project.worktree)` 逻辑，所以最省事的做法不是单独做“全局技能商店”，而是在最近项目卡片上加第二个按钮：`打开技能商店`。这样用户先选项目，再选 skill，路径上下文最清晰。([GitHub][3])
-
-### 伪代码骨架
-
-```tsx
-// home.tsx 最近项目列表里，每个项目多一个按钮
-<For each={recent()}>
-  {(project) => (
-    <div class="rounded-lg border p-3">
-      <button onClick={() => openProject(project.worktree)}>
-        {project.worktree.replace(homedir(), "~")}
-      </button>
-
-      <div class="mt-2 flex gap-2">
-        <Button onClick={() => openProject(project.worktree)}>
-          打开项目
-        </Button>
-
-        <Button
-          variant="secondary"
-          onClick={() => navigate(`/${base64Encode(project.worktree)}/skills`)}
-        >
-          打开技能商店
-        </Button>
-      </div>
-    </div>
-  )}
-</For>
-```
-
----
-
-## 十三、改 `packages/app/src/app.tsx`
-
-当前 app 入口已经 lazy load 了 `pages/home` 和 `pages/session`，并把页面挂在现有路由壳子里。你新增 `skills/index` 和 `skills/detail` 即可。([GitHub][9])
-
-### 伪代码骨架
-
-```tsx
-// app.tsx
-const SkillsIndex = lazy(() => import("@/pages/skills/index"))
-const SkillDetail = lazy(() => import("@/pages/skills/detail"))
-
-/*
-<Route path="/:dir" component={DirectoryLayout}>
-  <Route path="/" component={SessionIndexRoute} />
-  <Route path="/session/:id?" component={SessionRoute} />
-  <Route path="/skills" component={SkillsIndex} />
-  <Route path="/skills/:name" component={SkillDetail} />
-</Route>
-*/
-```
-
----
-
-## 十四、单元测试怎么写
-
-### 1）后端：`packages/opencode/src/server/routes/skill-store.test.ts`
-
-先做 4 条最关键的：
-
-#### 用例 A：能列出 catalog
-
-* 建一个临时目录
-* 写入：
-
-  * `tmp/store/pr-review/SKILL.md`
-  * `tmp/store/pr-review/store.json`
-* 配置 `skills.paths = [tmp/store]`
-* 发 `GET /skill-store`
-* 断言：
-
-  * 返回长度为 1
-  * `name === "pr-review"`
-  * `category === "code-review"`
-
-#### 用例 B：坏掉的 `store.json` 不会把整个接口打挂
-
-* 写一个非法 JSON
-* 发 `GET /skill-store`
-* 断言仍然 200
-* `displayName` 回退为 `skill.name`
-
-#### 用例 C：`deny` 时不允许 start-session
-
-* agent permission 里把该 skill 设为 `deny`
-* `POST /skill-store/pr-review/start-session`
-* 断言 403
-
-#### 用例 D：可以创建 session 并注入 bootstrap
-
-* `POST /skill-store/pr-review/start-session`
-* 断言返回 `sessionID`
-* 再读 session message，确认第一条隐藏上下文已经写入
-
-### 测试骨架示意
+找到当前发送消息的统一入口，把它包一层：
 
 ```ts
-describe("skill-store routes", () => {
-  test("list catalog", async () => {
-    // 1. 建 temp dir
-    // 2. 写 skill fixture
-    // 3. 启 server app
-    // 4. GET /skill-store
-    // 5. expect(...)
-  })
+async function sendPromptWithSkillMode(sessionId: string, userText: string) {
+  const mode = skillModeStore[sessionId];
 
-  test("invalid store.json falls back safely", async () => {
-    // expect 200 + fallback fields
-  })
-
-  test("deny permission blocks start-session", async () => {
-    // expect 403
-  })
-
-  test("start-session creates session and injects bootstrap", async () => {
-    // expect sessionID
-    // then read session messages
-  })
-})
+  return client.session.message(sessionId, {
+    system: mode?.systemPrompt,
+    parts: [
+      { type: "text", text: userText }
+    ]
+  });
+}
 ```
 
----
+如果你项目里现在用的是 SDK 封装方法，不一定正好叫这个名字，但原理一样：
+**有 active skill mode 时，就附加 `system`。**
+OpenCode 文档已经说明 message API 支持 `system` 参数。([OpenCode][4])
 
-## 十五、前端单测怎么写
+### 一个经验建议
 
-`packages/app` 目前已经有 Bun + happydom 单测脚本，以及 Playwright E2E 脚本，所以你直接沿用即可。([GitHub][10])
-
-### `packages/app/src/lib/skill-store.test.ts`
-
-测 API wrapper：
-
-* `listSkillStore()` 是否会把 `q` / `directory` 拼进 URL
-* `startSkillSession()` 遇到 409 是否能返回 `requiresConfirmation`
-
-### `packages/app/src/pages/skills/index.test.tsx`
-
-测商店页：
-
-* mock `fetch`
-* 渲染后能看到 skill 卡片
-* 输入搜索词后只剩匹配项
-* 点击卡片会跳详情
-
-### `packages/app/src/pages/skills/detail.test.tsx`
-
-测详情页：
-
-* 能渲染 starter prompts
-* 点“立即对话”会调 `startSkillSession`
-* 点示例 prompt 时 `initialUserMessage` 会带过去
+不要把整份 `SKILL.md` 每轮都塞进去。
+只要 system prompt 里点名当前 skill，并要求优先使用原生 `skill` tool 即可。
 
 ---
 
-## 十六、E2E 怎么写
+## 第 5 步：会话页加“技能模式”状态感知
 
-`packages/app/e2e/skill-store.spec.ts`
+在 `pages/session.tsx` 里加：
 
-推荐只先做一条最完整的 happy path：
+* 顶部 badge：`技能模式：api-review`
+* 二级按钮：`退出技能模式`
+* 二级按钮：`切换技能`
+* 输入框上方 starter prompts
 
-1. 打开某个 fixture 项目
-2. 进入 `/:dir/skills`
-3. 看到 `PR Review`
-4. 点进去详情页
-5. 点“帮我审查当前改动”
-6. 跳到 `/:dir/session/:id?skill=pr-review`
-7. 页面出现 `技能模式` 条
-8. 点“退出技能模式”
-9. 发生 fork 并跳到新 session
+例如：
 
-### E2E 骨架
+* “请按这个 skill 的步骤帮我分析这段需求”
+* “判断当前问题是否适合这个 skill”
+* “先给我执行计划，不要直接改代码”
 
-```ts
-test("open skill store and start skill session", async ({ page }) => {
-  await page.goto("/<encoded-dir>/skills")
-
-  await expect(page.getByText("PR Review")).toBeVisible()
-  await page.getByText("PR Review").click()
-
-  await page.getByText("帮我审查当前改动").click()
-
-  await expect(page.getByText("技能模式")).toBeVisible()
-  await expect(page.getByText("PR Review")).toBeVisible()
-
-  await page.getByText("退出技能模式").click()
-  await expect(page.getByText("技能模式")).not.toBeVisible()
-})
-```
+这样用户会很清楚：
+**我现在不是普通聊天，而是在一个“带工作流约束”的对话模式里。**
 
 ---
 
-## 十七、实际开发顺序
+## 第 6 步：安装/卸载 skill 后，记得触发引擎重载
 
-我建议你按这个顺序做，最不容易乱：
+OpenWork 架构文档写得很清楚：修改 skills / plugins / MCP / config 后，可以通过 `POST /workspace/:id/engine/reload` 让 OpenCode 重新读取配置。([GitHub][3])
 
-1. 先手工建一个最小 skill fixture
-   先别一上来接真实仓库，先让 `/tmp/opencode-skill-store/pr-review` 跑通。
+所以在这些动作后建议这样做：
 
-2. 先写 `store.ts`
-   先保证：
-
-   * 读得到 `Skill.all()`
-   * 读得到旁边的 `store.json`
-   * 能返回 catalog
-
-3. 再写 `skill-store.ts` 路由
-   先只做 `GET /skill-store` 和 `GET /skill-store/:name`，浏览器里能看见列表/详情。
-
-4. 再做 `start-session`
-   跑通“创建 session + 注入 bootstrap + 可选首问”。
-
-5. 再改前端列表页和详情页
-   先把页面通了，不急着做漂亮。
-
-6. 最后改 session 页的 skill badge 和退出逻辑。
-
-7. 最后再决定要不要替换 `opencode web` 的 fallback
-   如果你只是本地开发，先 `opencode serve --cors http://localhost:5173` 跑自定义前端更轻。官方文档明确支持这一模式。([OpenCode][6])
+* 安装 hub skill 成功 → `engine/reload`
+* 删除 skill 成功 → `engine/reload`
+* 编辑 `SKILL.md` 保存成功 → 先不一定 reload；如果你的 skill tool 是按读取文件即时生效，可以不 reload。若你发现缓存问题，再加 reload。
 
 ---
 
-## 十八、你现在最容易踩的 4 个坑
+# 如果你坚持“真的改 OpenCode 代码”，我建议这样做
 
-第一，**只改 `packages/app`，结果 `opencode web` 还是打开官方托管前端**。这是因为当前 catch-all 还在代理 `app.opencode.ai`。([GitHub][1])
+这是 **方案 B：深改 OpenCode 核心**。
+只有在你满足下面其中一个条件时才建议走：
 
-第二，**把 `store.json` 字段全塞进 `SKILL.md` frontmatter**。这样 UI 元数据不稳定，也和官方识别字段不一致。([OpenCode][2])
+* 你不想依赖 OpenWork server
+* 你希望未来别的客户端也能复用你的 skill store / skill mode
+* 你要把“技能模式”做成 OpenCode 官方级能力
 
-第三，**在旧会话里直接切 skill mode**。这样会话上下文很容易混。初版最好“一个 skill = 一个新 session”。
+## 需要改哪些地方
 
-第四，**退出 skill mode 只是隐藏 UI**。模型上下文没清掉；更合理的是 fork 新会话。([OpenCode][5])
+### 1）OpenCode core
+
+从仓库结构看，核心代码在：
+
+* `packages/opencode/src/server/routes`
+* `packages/opencode/src/skill`
+* `packages/opencode/src/session`
+
+这些模块现在都已经存在。([GitHub][11])
+
+### 2）SDK
+
+OpenCode SDK 规范文件在 `packages/sdk/openapi.json`。
+如果你加新 API，记得同步改这里并重新生成 SDK。([GitHub][12])
+
+### 3）OpenCode 自带 Web 前端
+
+如果你要把“技能商店”直接做进 OpenCode 自带 Web UI，要改：
+
+* `packages/app/src/pages`
+* `packages/app/src/context`
+* 可能还要加新组件和新路由
+
+这个 app 是 Solid + Vite，带单测和 Playwright。([GitHub][13])
 
 ---
 
-## 十九、最后给你一个可直接照抄的运行方式
+## 深改 OpenCode 的建议改法
 
-### 本地前后端分离开发
+### A. 新增原生 skill API
 
-```bash
-# 后端
-OPENCODE_SERVER_PASSWORD=secret \
-opencode serve --hostname 0.0.0.0 --port 4096 --cors http://localhost:5173
+在 `packages/opencode/src/server/routes` 下新增或扩展 skill route，例如：
 
-# 前端
-cd packages/app
-bun install
-bun run dev
-```
+* `GET /skill`
+* `GET /skill/:name`
+* `PUT /session/:id/skill-mode`
+* `DELETE /session/:id/skill-mode`
 
-### 运行测试
+### B. skill discovery 增强
 
-```bash
-cd packages/app
-bun run test:unit
-bun run test:e2e:local
-```
+在 `packages/opencode/src/skill/discovery.ts` 增加：
 
-这些脚本是当前 `packages/app/package.json` 里已经有的。([GitHub][10])
+* `listDetailedSkills()`
+* `findSkillByName()`
+* `listSkillsByRoots(roots: string[])`
 
-如果你愿意，我下一条可以继续给你一份**“更像真实 patch 的版本”**：我直接按这几个文件分别写出更接近可复制的 TypeScript 代码。
+### C. session 持久化 skill mode
 
-[1]: https://raw.githubusercontent.com/anomalyco/opencode/dev/packages/opencode/src/server/server.ts "raw.githubusercontent.com"
-[2]: https://opencode.ai/docs/zh-cn/skills/ "代理技能 | OpenCode"
-[3]: https://raw.githubusercontent.com/anomalyco/opencode/dev/packages/app/src/pages/home.tsx "raw.githubusercontent.com"
-[4]: https://raw.githubusercontent.com/anomalyco/opencode/dev/packages/opencode/src/skill/skill.ts "raw.githubusercontent.com"
-[5]: https://opencode.ai/docs/zh-cn/server/ "服务器 | OpenCode"
-[6]: https://opencode.ai/docs/zh-cn/web/ "Web | OpenCode"
-[7]: https://opencode.ai/docs/zh-cn/sdk/ "SDK | OpenCode"
-[8]: https://raw.githubusercontent.com/anomalyco/opencode/dev/packages/app/src/pages/session.tsx "raw.githubusercontent.com"
-[9]: https://raw.githubusercontent.com/anomalyco/opencode/dev/packages/app/src/app.tsx "raw.githubusercontent.com"
-[10]: https://raw.githubusercontent.com/anomalyco/opencode/dev/packages/app/package.json "raw.githubusercontent.com"
+在 `packages/opencode/src/session` 里：
+
+* 扩展 schema
+* 增加 `activeSkill` 字段
+* 在 `system.ts` 或 `instruction.ts` 里把 active skill 注入 session system
+
+### D. 更新 SDK
+
+改 `packages/sdk/openapi.json`，然后重新生成 JS SDK。
+
+### E. 更新 OpenCode Web UI
+
+在 `packages/app/src/pages/home.tsx` 或新增 `pages/skills.tsx`：
+
+* 加技能商店入口
+* 支持浏览已发现的 skills
+* 点击 skill 后进入 skill mode 会话
+
+### 这个方案的缺点
+
+维护成本更高。
+因为你每次跟上游 OpenCode 升级，都要一起处理：
+
+* 路由变更
+* session schema 变更
+* SDK 变更
+* Web UI 变更
+
+所以我的建议仍然是：**第一版别深改 OpenCode core。**
+
+---
+
+# 单元测试与集成测试怎么做
+
+## 一、如果你走 OpenWork 方案
+
+### server 测试
+
+OpenWork server 现在的 package 脚本就是 `bun test`。([GitHub][14])
+
+建议加这些测试：
+
+1. `skills.list.test.ts`
+
+   * 能扫到 `.opencode/skills/<name>/SKILL.md`
+   * 能扫到向上目录直到 git root
+   * 能扫到 global skills
+   * 非法 frontmatter 被忽略
+   * 同名 skill 去重
+
+2. `skills.detail.test.ts`
+
+   * `GET /workspace/:id/skills/:name` 返回内容
+   * 不存在 skill 返回 404
+
+3. `skill-roots.test.ts`
+
+   * 自定义 root 能正确扫描
+   * 非法路径被拒绝
+   * 重复 root 不重复返回
+
+4. `skill-mode-resolve.test.ts`
+
+   * 返回 `systemPrompt`
+   * 返回 starter prompts
+   * 空 trigger 时也有默认 starter prompts
+
+### 前端测试
+
+OpenWork UI 当前的测试风格不是 Vitest 组件测为主，而是很多 `node scripts/*.mjs` 的集成脚本。([GitHub][15])
+
+所以对新手最友好的方式是：
+
+* 延续现有风格
+* 新增两个脚本：
+
+  * `scripts/skill-store.mjs`
+  * `scripts/skill-mode.mjs`
+
+建议覆盖这些场景：
+
+1. 技能商店页能显示 skills / hubSkills
+2. 点击“开始技能对话”能创建或进入会话
+3. 会话页能显示 skill badge
+4. 发送消息时会附带 system skill mode
+5. 切换 skill 后旧 skill 不再生效
+6. 退出 skill mode 后恢复普通对话
+
+---
+
+## 二、如果你走 OpenCode 深改方案
+
+### OpenCode core
+
+`packages/opencode` 当前测试脚本就是 `bun test --timeout 30000`。([GitHub][16])
+
+建议加：
+
+* skill discovery 单测
+* `/skill` route 测试
+* `/session/:id/skill-mode` route 测试
+* session schema 迁移测试
+* system prompt 注入测试
+
+### OpenCode app
+
+`packages/app` 现在同时有：
+
+* `bun run test:unit`
+* `bun run test:e2e:local`
+
+而且 README 明说 E2E 依赖 opencode backend 默认 `localhost:4096`。([GitHub][17])
+
+你要加的测试：
+
+1. 技能商店页渲染
+2. 进入 skill mode 后 header badge 显示
+3. 新建 session 默认应用 skill mode
+4. refresh 后 skill mode 仍在
+5. 退出后恢复普通模式
+
+---
+
+# 我建议你的开发顺序
+
+按这个顺序最不容易翻车：
+
+1. **先做 skill 详情接口**
+2. **再做 skill mode 前端状态**
+3. **再做发送消息时的 `system` 注入**
+4. **再做技能商店 UI 按钮和详情抽屉**
+5. **最后才做自定义 skill roots 和 hub 美化**
+
+原因是前 3 步一通，你的核心价值就已经能跑起来了：
+**“点一个 skill → 进入专用对话模式”**。
+
+---
+
+# 最后给你一个最实用的判断
+
+如果你的目标是 **尽快做出一个可用的“技能商店 + skill 对话模式”产品**：
+
+* **主战场放在 OpenWork**
+
+  * `packages/app`
+  * `packages/server`
+
+* **把 OpenCode 当后端引擎**
+
+  * `opencode serve`
+  * session / message / event / skill tool
+
+只有等第一版跑稳了，再考虑把 skill mode 下沉到 OpenCode core 里，做成更通用的原生能力。
+
+如果你愿意，我下一条可以直接给你一份**按文件拆分的改动清单**，把每个文件要加什么函数、什么类型、什么按钮、什么测试样例逐个写出来。
+
+[1]: https://github.com/different-ai/openwork "https://github.com/different-ai/openwork"
+[2]: https://github.com/sst/opencode "GitHub - anomalyco/opencode: The open source coding agent. · GitHub"
+[3]: https://github.com/different-ai/openwork/blob/dev/ARCHITECTURE.md "https://github.com/different-ai/openwork/blob/dev/ARCHITECTURE.md"
+[4]: https://opencode.ai/docs/zh-cn/server/ "https://opencode.ai/docs/zh-cn/server/"
+[5]: https://github.com/different-ai/openwork/tree/dev/packages/server "https://github.com/different-ai/openwork/tree/dev/packages/server"
+[6]: https://github.com/different-ai/openwork/blob/dev/packages/app/src/app/pages/skills.tsx "https://github.com/different-ai/openwork/blob/dev/packages/app/src/app/pages/skills.tsx"
+[7]: https://github.com/different-ai/openwork/blob/dev/packages/server/src/skills.ts "https://github.com/different-ai/openwork/blob/dev/packages/server/src/skills.ts"
+[8]: https://opencode.ai/docs/zh-cn/web/ "https://opencode.ai/docs/zh-cn/web/"
+[9]: https://github.com/different-ai/openwork/blob/dev/packages/server/src/types.ts "https://github.com/different-ai/openwork/blob/dev/packages/server/src/types.ts"
+[10]: https://github.com/different-ai/openwork/tree/dev/packages/app/src/app "https://github.com/different-ai/openwork/tree/dev/packages/app/src/app"
+[11]: https://github.com/anomalyco/opencode/tree/dev/packages/opencode/src "opencode/packages/opencode/src at dev · anomalyco/opencode · GitHub"
+[12]: https://github.com/anomalyco/opencode/tree/dev/packages/sdk "opencode/packages/sdk at dev · anomalyco/opencode · GitHub"
+[13]: https://github.com/anomalyco/opencode/tree/dev/packages/app "opencode/packages/app at dev · anomalyco/opencode · GitHub"
+[14]: https://github.com/different-ai/openwork/blob/dev/packages/server/package.json "https://github.com/different-ai/openwork/blob/dev/packages/server/package.json"
+[15]: https://github.com/different-ai/openwork/blob/dev/packages/app/package.json "https://github.com/different-ai/openwork/blob/dev/packages/app/package.json"
+[16]: https://github.com/anomalyco/opencode/blob/dev/packages/opencode/package.json "opencode/packages/opencode/package.json at dev · anomalyco/opencode · GitHub"
+[17]: https://github.com/anomalyco/opencode/blob/dev/packages/app/package.json "opencode/packages/app/package.json at dev · anomalyco/opencode · GitHub"
