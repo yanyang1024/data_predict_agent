@@ -1,0 +1,16 @@
+"""把这个文件复制成 user_backend.py，并替换成你的真实实现。"""
+
+from __future__ import annotations
+
+
+def create_conversation() -> str:
+    """创建会话，返回 app_conversation_id。"""
+    raise NotImplementedError
+
+
+# 兼容三种写法：
+# 1) chat_query_v2_sse(user_id, app_conversation_id, content)
+# 2) chat_query_v2_sse(user_id, app_conversation_id, content, query_extends)
+# 3) chat_query_v2_sse(user_id, app_conversation_id, content, query_extends=None)
+def chat_query_v2_sse(user_id: str, app_conversation_id: str, content: str, query_extends=None):
+    raise NotImplementedError
