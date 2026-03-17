@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HiagentWebSDK 嵌入示例 - 智能客服系统</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+
+        .header {
+            background: rgba(255,255,255,0.1);
+            backdrop-filter: blur(10px);
+            color: white;
+            padding: 2rem;
+            text-align: center;
+            border-bottom: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .header h1 {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .header p {
+            opacity: 0.9;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+        }
+
+        .card h2 {
+            color: #333;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 1.25rem;
+        }
+
+        .card h2::before {
+            content: '';
+            display: inline-block;
+            width: 4px;
+            height: 24px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 2px;
+        }
+
+        .product-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .product-card {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 1.5rem;
+            transition: transform 0.3s, box-shadow 0.3s;
+            cursor: pointer;
+        }
+
+        .product-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+        }
+
+        .product-card .icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+
+        .product-card h3 {
+            color: #333;
+            margin-bottom: 0.5rem;
+        }
+
+        .product-card p {
+            color: #666;
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+
+        .product-card .price {
+            color: #667eea;
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin-top: 1rem;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: all 0.3s;
+            margin-right: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-outline {
+            background: transparent;
+            border: 2px solid #667eea;
+            color: #667eea;
+        }
+
+        .btn-outline:hover {
+            background: #667eea;
+            color: white;
+        }
+
+        .config-form {
+            display: grid;
+            gap: 1rem;
+            max-width: 600px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .form-group label {
+            color: #555;
+            font-size: 0.9rem;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+        }
+
+        .form-group input {
+            padding: 0.75rem 1rem;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+
+        .status-connected {
+            background: #c6f6d5;
+            color: #22543d;
+        }
+
+        .status-disconnected {
+            background: #fed7d7;
+            color: #742a2a;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: currentColor;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .info-box {
+            background: #ebf8ff;
+            border-left: 4px solid #4299e1;
+            padding: 1rem 1.5rem;
+            border-radius: 0 8px 8px 0;
+            margin: 1rem 0;
+        }
+
+        .info-box p {
+            color: #2c5282;
+            line-height: 1.6;
+        }
+
+        code {
+            background: #edf2f7;
+            padding: 0.2rem 0.4rem;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            color: #667eea;
+        }
+
+        .footer {
+            text-align: center;
+            padding: 2rem;
+            color: white;
+            opacity: 0.8;
+        }
+    </style>
+</head>
+<body>
+    <!-- 页面头部 -->
+    <header class="header">
+        <h1>🤖 HiagentWebSDK 嵌入示例</h1>
+        <p>展示如何在电商网站中集成智能客服 SDK</p>
+    </header>
+
+    <div class="container">
+        <!-- SDK 配置卡片 -->
+        <div class="card">
+            <h2>SDK 连接配置</h2>
+            <div class="info-box">
+                <p>
+                    <strong>提示：</strong>请在下方填入您的 <code>appKey</code> 和 <code>baseUrl</code>，
+                    然后点击「初始化 SDK」按钮。您可以在 Hiagent 控制台获取这些配置信息。
+                </p>
+            </div>
+            
+            <div class="config-form">
+                <div class="form-group">
+                    <label>App Key</label>
+                    <input type="text" id="appKey" placeholder="例如: ak_1234567890abcdef" value="your_appkey">
+                </div>
+                <div class="form-group">
+                    <label>Base URL</label>
+                    <input type="text" id="baseUrl" placeholder="例如: https://your-domain.hiagent.com" value="your_app_url">
+                </div>
+                <div class="form-group">
+                    <label>SDK 状态</label>
+                    <span id="sdkStatus" class="status-badge status-disconnected">
+                        <span class="status-dot"></span>
+                        未连接
+                    </span>
+                </div>
+            </div>
+            
+            <div style="margin-top: 1.5rem;">
+                <button class="btn" onclick="initSDK()">🚀 初始化 SDK</button>
+                <button class="btn btn-outline" onclick="showSDKConfig()">📋 查看当前配置</button>
+            </div>
+        </div>
+
+        <!-- 示例商品卡片 -->
+        <div class="card">
+            <h2>热门商品</h2>
+            <div class="product-grid">
+                <div class="product-card" onclick="askAboutProduct('智能手表 Pro')">
+                    <div class="icon">⌚</div>
+                    <h3>智能手表 Pro</h3>
+                    <p>心率监测、GPS定位、50米防水，您的健康管家</p>
+                    <div class="price">¥1,299</div>
+                </div>
+                <div class="product-card" onclick="askAboutProduct('无线降噪耳机')">
+                    <div class="icon">🎧</div>
+                    <h3>无线降噪耳机</h3>
+                    <p>主动降噪、40小时续航、高保真音质</p>
+                    <div class="price">¥899</div>
+                </div>
+                <div class="product-card" onclick="askAboutProduct('便携投影仪')">
+                    <div class="icon">📽️</div>
+                    <h3>便携投影仪</h3>
+                    <p>4K超清、自动对焦、内置音响，随身影院</p>
+                    <div class="price">¥2,499</div>
+                </div>
+                <div class="product-card" onclick="askAboutProduct('智能音箱 Mini')">
+                    <div class="icon">🔊</div>
+                    <h3>智能音箱 Mini</h3>
+                    <p>语音助手、智能家居控制、360°环绕音效</p>
+                    <div class="price">¥299</div>
+                </div>
+            </div>
+            <p style="margin-top: 1rem; color: #666; font-size: 0.9rem;">
+                💡 点击任意商品卡片，即可向智能客服咨询该商品
+            </p>
+        </div>
+
+        <!-- 功能说明卡片 -->
+        <div class="card">
+            <h2>SDK 功能说明</h2>
+            <div class="product-grid">
+                <div style="padding: 1rem;">
+                    <h3 style="color: #667eea; margin-bottom: 0.5rem;">💬 智能对话</h3>
+                    <p style="color: #666; line-height: 1.6;">
+                        集成 LLM 大模型能力，支持自然语言对话，智能回答用户问题
+                    </p>
+                </div>
+                <div style="padding: 1rem;">
+                    <h3 style="color: #667eea; margin-bottom: 0.5rem;">🎯 场景感知</h3>
+                    <p style="color: #666; line-height: 1.6;">
+                        自动识别用户所在页面和浏览内容，提供上下文相关的服务
+                    </p>
+                </div>
+                <div style="padding: 1rem;">
+                    <h3 style="color: #667eea; margin-bottom: 0.5rem;">👤 用户识别</h3>
+                    <p style="color: #666; line-height: 1.6;">
+                        支持用户身份识别和个性化配置，提供定制化服务体验
+                    </p>
+                </div>
+                <div style="padding: 1rem;">
+                    <h3 style="color: #667eea; margin-bottom: 0.5rem;">📊 数据分析</h3>
+                    <p style="color: #666; line-height: 1.6;">
+                        自动收集对话数据，提供详细的数据分析报表
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 代码示例卡片 -->
+        <div class="card">
+            <h2>嵌入代码示例</h2>
+            <div style="background: #1a202c; border-radius: 8px; padding: 1.5rem; overflow-x: auto;">
+                <pre style="color: #e2e8f0; font-family: 'Courier New', monospace; font-size: 0.9rem; line-height: 1.6;"><code>&lt;!-- 1. 引入 SDK 脚本 --&gt;
+&lt;script src="http://hostip:port/resources/product/llm/public/sdk/embedLite.js"&gt;&lt;/script&gt;
+
+&lt;!-- 2. 初始化 SDK（放在 body 结束标签前） --&gt;
+&lt;script&gt;
+  new HiagentWebSDK.WebLiteClient({
+    appKey: "your_appkey",
+    baseUrl: "your_app_url"
+  });
+&lt;/script&gt;</code></pre>
+            </div>
+        </div>
+    </div>
+
+    <footer class="footer">
+        <p>HiagentWebSDK 嵌入示例 &copy; 2024 | 技术支持：Hiagent</p>
+    </footer>
+
+    <!-- ============================================ -->
+    <!-- HiagentWebSDK 嵌入代码 - 开始 -->
+    <!-- ============================================ -->
+    
+    <!-- 
+      步骤 1: 引入 SDK 脚本
+      请将 src 替换为实际的 SDK 地址
+      例如: http://192.168.1.100:8080/resources/product/llm/public/sdk/embedLite.js
+    -->
+    <script src="http://hostip:port/resources/product/llm/public/sdk/embedLite.js"></script>
+    
+    <!-- 
+      步骤 2: 初始化 SDK
+      通常在页面加载完成后初始化
+    -->
+    <script>
+        // SDK 实例（全局变量，方便后续操作）
+        let webLiteClient = null;
+        
+        // 初始化 SDK 函数
+        function initSDK() {
+            const appKey = document.getElementById('appKey').value;
+            const baseUrl = document.getElementById('baseUrl').value;
+            
+            // 验证配置
+            if (!appKey || appKey === 'your_appkey') {
+                alert('请输入有效的 App Key');
+                return;
+            }
+            if (!baseUrl || baseUrl === 'your_app_url') {
+                alert('请输入有效的 Base URL');
+                return;
+            }
+            
+            try {
+                // 检查 SDK 是否加载成功
+                if (typeof HiagentWebSDK === 'undefined') {
+                    alert('SDK 脚本加载失败，请检查 SDK URL 是否正确');
+                    return;
+                }
+                
+                // 销毁旧的实例（如果存在）
+                if (webLiteClient) {
+                    // 如果有销毁方法可以调用
+                    // webLiteClient.destroy();
+                }
+                
+                // 创建新的 SDK 实例
+                webLiteClient = new HiagentWebSDK.WebLiteClient({
+                    appKey: appKey,
+                    baseUrl: baseUrl
+                    // 可以添加更多配置选项
+                });
+                
+                console.log('HiagentWebSDK 初始化成功', webLiteClient);
+                
+                // 更新状态显示
+                updateStatus(true);
+                alert('SDK 初始化成功！智能客服组件已加载。');
+                
+            } catch (error) {
+                console.error('SDK 初始化失败:', error);
+                alert('SDK 初始化失败: ' + error.message);
+                updateStatus(false);
+            }
+        }
+        
+        // 更新 SDK 状态显示
+        function updateStatus(connected) {
+            const statusEl = document.getElementById('sdkStatus');
+            if (connected) {
+                statusEl.className = 'status-badge status-connected';
+                statusEl.innerHTML = '<span class="status-dot"></span>已连接';
+            } else {
+                statusEl.className = 'status-badge status-disconnected';
+                statusEl.innerHTML = '<span class="status-dot"></span>未连接';
+            }
+        }
+        
+        // 查看当前配置
+        function showSDKConfig() {
+            const appKey = document.getElementById('appKey').value;
+            const baseUrl = document.getElementById('baseUrl').value;
+            
+            alert(`当前配置:\nApp Key: ${appKey}\nBase URL: ${baseUrl}`);
+        }
+        
+        // 向客服咨询商品
+        function askAboutProduct(productName) {
+            if (!webLiteClient) {
+                alert('请先初始化 SDK');
+                return;
+            }
+            
+            // 如果 SDK 支持发送消息的方法
+            // webLiteClient.sendMessage(`我想了解 ${productName} 的更多信息`);
+            
+            console.log(`用户想咨询商品: ${productName}`);
+        }
+        
+        // 页面加载完成后的初始化（可选）
+        // 如果需要页面加载后自动初始化，取消下面注释
+        /*
+        document.addEventListener('DOMContentLoaded', function() {
+            // 检查配置是否已填写
+            const appKey = document.getElementById('appKey').value;
+            const baseUrl = document.getElementById('baseUrl').value;
+            
+            if (appKey && appKey !== 'your_appkey' && 
+                baseUrl && baseUrl !== 'your_app_url') {
+                initSDK();
+            }
+        });
+        */
+    </script>
+    
+    <!-- ============================================ -->
+    <!-- HiagentWebSDK 嵌入代码 - 结束 -->
+    <!-- ============================================ -->
+</body>
+</html>
