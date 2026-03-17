@@ -86,6 +86,8 @@ def test_build_upstream_request_with_base64_image_generates_query_extends():
     payload = build_upstream_request(req, user_id="u2")
     assert payload.query_extends.files
     file_info = payload.query_extends.files[0]
-    assert file_info.url.startswith(settings.public_base_url + "/proxy/media/")
+    assert file_info.url.startswith(settings.public_base_url + settings.media_url_prefix + "/")
     assert file_info.size > 0
+    assert file_info.path.startswith(settings.media_subdir + "/")
+    assert file_info.name.startswith(settings.upload_filename_prefix + "_")
     assert "QueryExtends.Files" in payload.content

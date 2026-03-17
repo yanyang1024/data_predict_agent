@@ -276,3 +276,33 @@ PYTHONPATH=. pytest -q
    - 上游每条 SSE
    - 转换后的每条 Anthropic SSE
 
+
+
+## 图片统一处理
+
+当前版本对所有接收到的图片统一执行以下流程：
+
+1. 无论是 `image.source.type=base64` 还是 `image.source.type=url`，都先保存到本地 `MEDIA_DIR/MEDIA_SUBDIR/`。
+2. 自动构造上游 `query_extends`：
+
+```python
+query_extends = {
+    "Files": [
+        {
+            "Name": "upload_rawpic_xxx.png",
+            "Path": "uploaded_images/upload_rawpic_xxx.png",
+            "Size": 47525,
+            "Url": "http://127.0.0.1:8000/proxy/media/uploaded_images/upload_rawpic_xxx.png",
+        }
+    ]
+}
+```
+
+可通过环境变量调整：
+
+- `PUBLIC_BASE_URL`：外部可访问的服务地址
+- `MEDIA_DIR`：本地落盘根目录
+- `MEDIA_SUBDIR`：图片相对目录，默认 `uploaded_images`
+- `MEDIA_URL_PREFIX`：图片访问前缀，默认 `/proxy/media`
+- `UPLOAD_FILENAME_PREFIX`：base64 图片默认前缀，默认 `upload_rawpic`
+- `MEDIA_PROXY_MODE`：默认 `download`，统一走本地落盘

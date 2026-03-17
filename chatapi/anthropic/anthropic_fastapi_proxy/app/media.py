@@ -3,6 +3,7 @@ from __future__ import annotations
 import base64
 import hashlib
 import mimetypes
+import os
 from pathlib import Path
 from typing import Any, Dict, Optional
 from urllib.parse import urlparse
@@ -28,42 +29,47 @@ def _sanitize_filename(name: str) -> str:
     return safe or "file.bin"
 
 
+def _build_storage_name(raw: bytes, ext: str, filename_hint: str = "") -> str:
+    if filename_hint:
+        hint = _sanitize_filename(filename_hint)
+        stem, hint_ext = os.path.splitext(hint)
+        final_ext = hint_ext or ext
+        digest = hashlib.sha256(raw).hexdigest()[:12]
+        return f"{stem}_{digest}{final_ext}"
+    digest = hashlib.sha256(raw).hexdigest()[:16]
+    return f"{settings.upload_filename_prefix}_{digest}{ext}"
+
+
+def _store_bytes(raw: bytes, media_type: Optional[str], filename_hint: str = "") -> UpstreamFile:
+    ext = _guess_ext(media_type, filename_hint)
+    storage_name = _build_storage_name(raw, ext, filename_hint)
+    relative_path = f"{settings.media_subdir}/{storage_name}" if settings.media_subdir else storage_name
+    full_path = settings.media_dir / relative_path
+    full_path.parent.mkdir(parents=True, exist_ok=True)
+    if not full_path.exists():
+        full_path.write_bytes(raw)
+    return UpstreamFile(
+        name=storage_name,
+        path=relative_path,
+        size=full_path.stat().st_size,
+        url=f"{settings.public_base_url}{settings.media_url_prefix}/{relative_path}",
+    )
+
+
 def save_base64_image(source: Dict[str, Any]) -> UpstreamFile:
     media_type = source.get("media_type", "application/octet-stream")
     raw = base64.b64decode(source["data"])
-    digest = hashlib.sha256(raw).hexdigest()
-    ext = _guess_ext(media_type)
-    filename = f"{digest}{ext}"
-    path = settings.media_dir / filename
-    if not path.exists():
-        path.write_bytes(raw)
-
-    return UpstreamFile(
-        name=filename,
-        path=str(path),
-        size=path.stat().st_size,
-        url=f"{settings.public_base_url}/proxy/media/{filename}",
-    )
+    filename_hint = source.get("filename") or ""
+    return _store_bytes(raw, media_type=media_type, filename_hint=filename_hint)
 
 
 def download_and_rehost(url: str) -> UpstreamFile:
     response = requests.get(url, timeout=30)
     response.raise_for_status()
     raw = response.content
-    digest = hashlib.sha256(raw).hexdigest()
     parsed = urlparse(url)
     filename_hint = Path(parsed.path).name
-    ext = _guess_ext(response.headers.get("Content-Type"), filename_hint)
-    filename = _sanitize_filename(f"{digest}{ext}")
-    path = settings.media_dir / filename
-    if not path.exists():
-        path.write_bytes(raw)
-    return UpstreamFile(
-        name=filename_hint or filename,
-        path=str(path),
-        size=path.stat().st_size,
-        url=f"{settings.public_base_url}/proxy/media/{filename}",
-    )
+    return _store_bytes(raw, media_type=response.headers.get("Content-Type"), filename_hint=filename_hint)
 
 
 def image_block_to_upstream_file(block: Dict[str, Any]) -> UpstreamFile:
@@ -73,11 +79,7 @@ def image_block_to_upstream_file(block: Dict[str, Any]) -> UpstreamFile:
         return save_base64_image(source)
     if source_type == "url":
         url = source["url"]
-        if settings.media_proxy_mode == "download":
-            return download_and_rehost(url)
-        parsed = urlparse(url)
-        name = Path(parsed.path).name or "remote-image"
-        return UpstreamFile(name=name, path=url, size=0, url=url)
+        return download_and_rehost(url)
     if source_type == "file":
         raise ValueError("当前示例代理未实现 Anthropic Files API/file_id 到本地文件的映射，请改用 image.source.type=url 或 base64。")
     raise ValueError(f"不支持的图片 source.type: {source_type}")
