@@ -22,20 +22,52 @@ TINY_PNG_DATA_URL = (
 )
 
 
-@pytest.fixture()
-def client_and_dirs(tmp_path: Path):
-    os.environ["USE_MOCK_BACKEND"] = "true"
-    os.environ["LOG_DIR"] = str(tmp_path / "logs")
-    os.environ["BRIDGE_DIR"] = str(tmp_path / "bridge")
-    os.environ["SESSION_STORE_FILE"] = str(tmp_path / "sessions.json")
-    os.environ["PUBLIC_BASE_URL"] = "http://testserver"
+ENV_KEYS = [
+    "USE_MOCK_BACKEND",
+    "LOG_DIR",
+    "BRIDGE_DIR",
+    "SESSION_STORE_FILE",
+    "PUBLIC_BASE_URL",
+    "BRIDGE_ROUTE",
+    "BRIDGE_PUBLIC_URL_BASE",
+    "BRIDGE_USE_RELATIVE_PATH_IN_URL",
+    "DOWNLOAD_REMOTE_IMAGES",
+    "REMOTE_IMAGE_TIMEOUT_SECONDS",
+    "GENERATED_IMAGE_NAME_PREFIX",
+]
+
+
+
+def _build_client(tmp_path: Path, **env_overrides: str) -> TestClient:
+    defaults = {
+        "USE_MOCK_BACKEND": "true",
+        "LOG_DIR": str(tmp_path / "logs"),
+        "BRIDGE_DIR": str(tmp_path / "bridge"),
+        "SESSION_STORE_FILE": str(tmp_path / "sessions.json"),
+        "PUBLIC_BASE_URL": "http://testserver",
+        "BRIDGE_ROUTE": "/bridge/files",
+        "DOWNLOAD_REMOTE_IMAGES": "true",
+        "REMOTE_IMAGE_TIMEOUT_SECONDS": "15",
+        "GENERATED_IMAGE_NAME_PREFIX": "upload_",
+    }
+    for key in ENV_KEYS:
+        os.environ.pop(key, None)
+    defaults.update(env_overrides)
+    for key, value in defaults.items():
+        os.environ[key] = value
 
     import app.config as app_config
     import app.main as app_main
 
+    app_config.get_settings.cache_clear()
     importlib.reload(app_config)
     importlib.reload(app_main)
-    client = TestClient(app_main.app)
+    return TestClient(app_main.app)
+
+
+@pytest.fixture()
+def client_and_dirs(tmp_path: Path):
+    client = _build_client(tmp_path)
     yield client, tmp_path
 
 
@@ -159,9 +191,59 @@ def test_stream_with_image_data_url(client_and_dirs) -> None:
     backend_request = json.loads((trace_dir / "backend_forward_request.json").read_text(encoding="utf-8"))
     assert len(backend_request["QueryExtends"]["Files"]) == 1
     file_info = backend_request["QueryExtends"]["Files"][0]
+    assert file_info["Name"].startswith("upload_")
+    assert file_info["Path"].startswith("bridge/")
     assert file_info["Url"].startswith("http://testserver/bridge/files/")
+    assert file_info["Size"] > 0
     bridge_files = list((tmp_path / "bridge").glob("*"))
     assert bridge_files, "bridged image file should be saved locally"
+
+
+
+def test_image_is_always_persisted_and_can_use_custom_public_base(tmp_path: Path) -> None:
+    source_image = tmp_path / "upload_rawpic.png"
+    source_image.write_bytes(
+        b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x02\x00\x00\x00\x90wS\xde"
+        b"\x00\x00\x00\x0cIDATx\x9cc```\x00\x00\x00\x04\x00\x01\x0b\xe7\x02\x9d\x00\x00\x00\x00IEND\xaeB`\x82"
+    )
+    client = _build_client(
+        tmp_path,
+        BRIDGE_DIR=str(tmp_path / "xxx"),
+        BRIDGE_PUBLIC_URL_BASE="http://10.18.32.131:8188",
+        BRIDGE_USE_RELATIVE_PATH_IN_URL="false",
+    )
+    payload = {
+        "model": "mock-model",
+        "messages": [
+            {
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": "看这张图"},
+                    {
+                        "type": "image_url",
+                        "image_url": {
+                            "url": str(source_image),
+                            "name": "upload_rawpic.png",
+                        },
+                    },
+                ],
+            }
+        ],
+        "stream": False,
+    }
+    resp = client.post("/v1/chat/completions", json=payload)
+    assert resp.status_code == 200, resp.text
+
+    trace_dir = _latest_trace_dir(tmp_path / "logs")
+    backend_request = json.loads((trace_dir / "backend_forward_request.json").read_text(encoding="utf-8"))
+    file_info = backend_request["QueryExtends"]["Files"][0]
+    assert file_info == {
+        "Name": "upload_rawpic.png",
+        "Path": "xxx/upload_rawpic.png",
+        "Size": source_image.stat().st_size,
+        "Url": "http://10.18.32.131:8188/upload_rawpic.png",
+    }
+    assert (tmp_path / "xxx" / "upload_rawpic.png").exists()
 
 
 

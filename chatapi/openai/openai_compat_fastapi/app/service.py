@@ -5,7 +5,7 @@ import time
 import uuid
 from typing import Any, Dict, Generator, Iterable, List, Optional, Tuple
 
-from fastapi import Header, HTTPException
+from fastapi import HTTPException
 
 from .backend_adapter import ExistingServiceAdapter
 from .config import Settings
@@ -132,16 +132,31 @@ class CompatibilityService:
                 if ptype == "text":
                     text_parts.append(part.get("text", ""))
                 elif ptype == "image_url":
-                    image_url = (part.get("image_url") or {}).get("url")
+                    image_info = part.get("image_url") or {}
+                    image_url = image_info.get("url") or part.get("url")
+                    preferred_name = (
+                        image_info.get("name")
+                        or part.get("name")
+                        or part.get("file_name")
+                        or part.get("filename")
+                    )
                     if image_url:
-                        result = bridge_image_url(image_url, self.settings)
+                        result = bridge_image_url(
+                            image_url,
+                            self.settings,
+                            preferred_name=preferred_name,
+                        )
                         files.append(result.backend_file)
-                        text_parts.append(f"[image] {result.backend_file.Url}")
+                        text_parts.append(
+                            f"[image_attached] name={result.backend_file.Name} url={result.backend_file.Url}"
+                        )
                         trace.event(
                             "image_bridged",
                             {
                                 "source": image_url[:128],
+                                "preferred_name": preferred_name,
                                 "public_url": result.backend_file.Url,
+                                "path": result.backend_file.Path,
                                 "name": result.backend_file.Name,
                                 "size": result.backend_file.Size,
                             },

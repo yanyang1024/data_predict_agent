@@ -45,6 +45,8 @@ def healthz() -> dict:
         "app_name": settings.app_name,
         "bridge_route": settings.bridge_route,
         "public_base_url": settings.public_base_url,
+        "bridge_public_url_base": settings.resolved_bridge_public_url_base,
+        "bridge_use_relative_path_in_url": settings.bridge_use_relative_path_in_url,
         "using_mock_backend": isinstance(backend_adapter, MockBackendAdapter),
     }
 

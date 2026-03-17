@@ -9,7 +9,7 @@
 - 支持 `tool` role 消息，把 tool message 直接拼接进后端 `Query`
 - 支持 `assistant.tool_calls` 历史消息，把结构化 tool call 转成文本拼接进 `Query`
 - 支持多模态 `messages[].content = [{type:text}, {type:image_url}]`
-- 对 `data:image/...;base64,...` 自动落盘并桥接为可访问 URL
+- 对所有接收到的图片统一做“本地落盘 -> 构造可访问 URL -> 组装 QueryExtends.Files”
 - 按请求生成完整 trace 日志，便于排查
 
 ## 目录结构
@@ -41,6 +41,9 @@ source .venv/bin/activate
 pip install -r requirements.txt
 export USE_MOCK_BACKEND=true
 export PUBLIC_BASE_URL="http://127.0.0.1:8000"
+# 若图片要给现有服务器访问，推荐单独指定图片访问出口地址
+# 不设置时，默认使用 PUBLIC_BASE_URL + BRIDGE_ROUTE
+export BRIDGE_PUBLIC_URL_BASE="http://127.0.0.1:8000/bridge/files"
 uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
@@ -81,15 +84,61 @@ def chat_query_v2_sse(user_id: str, app_conversation_id: str, content: str, quer
 
 ## 多模态图片桥接说明
 
-如果 OpenAI 请求里图片是：
+现在的逻辑已经改成：**所有收到的图片统一先落本地，再生成 `QueryExtends.Files`**。
 
-- 远程 URL：直接透传为 `QueryExtends.Files[*].Url`
-- `data:image/...;base64,...`：
-  1. 网关写入本地 `BRIDGE_DIR`
-  2. 通过 `/bridge/files/{filename}` 暴露静态文件
-  3. 用 `PUBLIC_BASE_URL + /bridge/files/...` 生成后端可访问 URL
+支持三类来源：
 
-> 注意：`PUBLIC_BASE_URL` 必须是后端模型服务机器也能访问到的地址。若模型服务不在本机，不能写 `127.0.0.1`，应改成实际域名或网关出口地址。
+- 远程 URL：网关主动下载到本地
+- `data:image/...;base64,...`：网关解码后写入本地
+- 本地文件路径 / `file://...`：网关复制到图片桥接目录
+
+统一生成的 `query_extends` 结构如下：
+
+```python
+query_extends = {
+    "Files": [
+        {
+            "Name": "upload_rawpic.png",
+            "Path": "xxx/upload_rawpic.png",
+            "Size": 47525,
+            "Url": "http://10.18.32.131:8188/upload_rawpic.png"
+        }
+    ]
+}
+```
+
+### 字段生成规则
+
+- `Name`：优先使用原始文件名；如果没有，则生成 `upload_<hash>.<ext>`
+- `Path`：本地落盘后的相对路径，例如 `bridge_files/upload_xxx.png` 或 `xxx/upload_rawpic.png`
+- `Size`：落盘文件字节数
+- `Url`：图片访问地址
+  - 默认：`PUBLIC_BASE_URL + BRIDGE_ROUTE + /<filename>`
+  - 若设置 `BRIDGE_PUBLIC_URL_BASE`：改为 `BRIDGE_PUBLIC_URL_BASE + /<filename>`
+  - 若再设置 `BRIDGE_USE_RELATIVE_PATH_IN_URL=true`：改为 `BRIDGE_PUBLIC_URL_BASE + /<relative_path>`
+
+### 典型配置
+
+#### 方案 1：直接用当前 FastAPI 暴露静态文件
+
+```bash
+export BRIDGE_DIR="./xxx"
+export BRIDGE_ROUTE="/bridge/files"
+export PUBLIC_BASE_URL="http://10.18.32.131:8188"
+# 最终 Url 类似: http://10.18.32.131:8188/bridge/files/upload_rawpic.png
+```
+
+#### 方案 2：图片由单独文件服务或 Nginx 暴露
+
+```bash
+export BRIDGE_DIR="./xxx"
+export BRIDGE_PUBLIC_URL_BASE="http://10.18.32.131:8188"
+export BRIDGE_USE_RELATIVE_PATH_IN_URL="false"
+# 最终 Url 类似: http://10.18.32.131:8188/upload_rawpic.png
+# Path 类似: xxx/upload_rawpic.png
+```
+
+> 注意：图片访问地址必须是你现有模型服务机器能够访问到的地址，而不只是浏览器本机可访问。
 
 ## 会话策略
 
