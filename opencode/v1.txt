@@ -1,0 +1,1206 @@
+
+请基于我的描述和背景帮我设计对应程序实现，帮我做一个面向企业内部研发用户的ai门户网站：
+（请先参考背景和实现方案进行V1实现，有较为完整的log方便trace应用问题）（注意python环境默认使用/home/yy/python312 , opencode和openwork也已经在本地安装完成且不要进行升级或者降级）
+我需要做一个 **AI Portal（统一入口）**：
+
+* **前台**：大模型 的“聊天 + 资源切换”WebUI
+* **中台**：统一鉴权、资源目录、Skill 商店、会话中心、权限中心、日志追踪
+* **执行层**：
+
+  * 原生对话 / Skill 对话：走 OpenCode
+  * 知识库对话：走  websdk  ，html嵌入
+  * 旧智能体应用：走 websdk  html嵌入
+  * 文件型 skill/config 管理：走 OpenWork server
+
+走websdk的几个执行层方案，嵌入的websdk中自带会话管理和历史，不需要再进行会话管理。也不必刻意支持回溯。
+对于websdk的实现，第一版先做到“入口统一 + 启动记录统一”即可。
+
+旧智能体应用和知识库对话应用均为已经做好的智能体应用（这批已经做好的智能体有统一的开发规范），websdk的形式大致如下:```
+websdk嵌入 js嵌入html 大概的形式如下 <!--以下代码请放入前端html 文件的body内--><script src="http://hostip:port/resources/product/llm/public/sdk/embedLite.js"></script><script>new HiagentWebSDK.WebLiteClient({appKey: "your_appkey",baseUrl: "your_app_url", }); </script> ```
+
+
+以下是实现方案参考：
+```
+可以，下面我直接按你要的 **V1 范围**来落，重点先完成：
+
+* **执行层设计**
+* **基础模块设计**
+* **可开工的接口与代码骨架**
+* **websdk 版知识库 / 旧应用 adapter**
+* **mock SSO 预留真实接入点**
+
+这版 V1 我建议把系统固定成 4 个执行适配器：
+
+1. **OpenCodeAdapter**：原生对话
+2. **SkillChatAdapter**：Skill 对话
+3. **WebSDKAdapter**：知识库对话 / 旧智能体应用
+4. **OpenWorkAdapter**：文件型 skill / config 管理
+
+这样分的原因很直接：OpenCode 官方已经提供独立 HTTP server、`/session`、`/session/:id/message`、`/session/:id/prompt_async`、`/event` 和 OpenAPI `/doc`；OpenCode 的 skill 通过 `SKILL.md` 被原生 `skill` 工具按需加载；而 OpenWork 官方方向明确建议把 skills/config 这类文件系统操作统一走 server，并且当前 server 已列出 `/workspace/:id/skills`、`PATCH /workspace/:id/config`、`POST /workspace/:id/engine/reload` 以及 `/w/:id/opencode/*` 代理能力。([OpenCode][1])
+
+---
+
+## 一、V1 的边界先定死
+
+### V1 要做
+
+* 统一入口 WebUI
+* mock SSO 登录，得到工号
+* 资源目录
+* Skill 商店（只做浏览 + 权限 + 启动，不做编辑）
+* 原生对话 / Skill 对话
+* websdk 知识库 / websdk 旧应用接入
+* 原生对话 session 与历史
+* websdk 应用只做“入口统一 + 启动记录统一”
+* Redis 存 Portal 元数据
+* JSON 日志 + trace_id
+
+### V1 不做
+
+* Skill 在线编辑器
+* websdk 应用的 Portal 侧会话回溯
+* 知识库管理后台
+* 多 Skill 叠加
+* 复杂审批流
+
+---
+
+## 二、V1 总体架构
+
+```text
+[Mock SSO / 未来真实 SSO]
+          │
+          ▼
+     [AI Portal Web]
+          │
+          ▼
+   [FastAPI BFF / Gateway]
+   ├─ Auth(mock now, real later)
+   ├─ Resource Catalog
+   ├─ ACL / Permission
+   ├─ Session Center (only native/skill)
+   ├─ Launch Record Center (for websdk)
+   ├─ Execution Adapters
+   │   ├─ OpenCodeAdapter
+   │   ├─ SkillChatAdapter
+   │   ├─ WebSDKAdapter
+   │   └─ OpenWorkAdapter
+   ├─ Trace / Audit Log
+   └─ Redis Store
+          │
+   ┌──────┼───────────────┐
+   │      │               │
+   ▼      ▼               ▼
+OpenCode  OpenWork Server  KB/Legacy WebSDK Apps
+```
+
+---
+
+## 三、执行层设计
+
+## 1）统一适配器接口
+
+先定义统一协议，不同资源只换 adapter，不换上层页面逻辑。
+
+```python
+# app/adapters/base.py
+from typing import Protocol, Any
+
+class LaunchResult(dict):
+    pass
+
+class ExecutionAdapter(Protocol):
+    async def launch(self, *, resource: dict, user: dict, trace_id: str) -> LaunchResult:
+        ...
+
+class ChatCapableAdapter(ExecutionAdapter, Protocol):
+    async def create_session(self, *, resource: dict, user: dict, trace_id: str) -> dict:
+        ...
+
+    async def send_message(
+        self,
+        *,
+        session_meta: dict,
+        text: str,
+        user: dict,
+        trace_id: str
+    ) -> dict:
+        ...
+
+    async def list_messages(self, *, session_meta: dict, trace_id: str) -> list[dict]:
+        ...
+```
+
+---
+
+## 2）四类 adapter 的职责
+
+### A. OpenCodeAdapter
+
+只负责原生对话：
+
+* 创建 OpenCode session
+* 发消息
+* 取消息历史
+* 后续可扩展 SSE / async
+
+OpenCode 官方 server 已经直接暴露了 session、message、`prompt_async`、`/event` 等接口，所以这层很适合被你自己的 BFF 二次封装。([OpenCode][1])
+
+### B. SkillChatAdapter
+
+本质还是走 OpenCode，只是比直聊多一层：
+
+* session 上挂 `skill_name`
+* 发消息时自动注入 `system prompt`
+* 要求模型优先使用原生 `skill` 工具加载该 skill
+
+OpenCode 官方 skill 是从 `SKILL.md` 发现并按需加载的，所以 Skill V1 不必自造一套执行器。([OpenCode][2])
+
+### C. WebSDKAdapter
+
+给知识库和旧应用共用：
+
+* 生成 `launch_token`
+* 记录启动记录
+* 返回一个可嵌入的 html host 页或 embed config
+* 不管理它自己的聊天历史
+
+### D. OpenWorkAdapter
+
+只负责文件型技能/config能力：
+
+* 列出 skills
+* 未来可发布 skill / reload engine
+* 这部分不直接暴露给普通用户编辑
+
+OpenWork 官方架构文档明确建议把 `.opencode/`、`SKILL.md`、`opencode.json` 这类读写统一走 server 路径，而不是让前端直接碰本地文件系统。([GitHub][3])
+
+---
+
+## 3）资源类型定义
+
+```python
+# app/models.py
+from enum import Enum
+from pydantic import BaseModel, Field
+from typing import Any, Literal
+
+class ResourceType(str, Enum):
+    DIRECT_CHAT = "direct_chat"
+    SKILL = "skill"
+    KB_WEBSDK = "kb_websdk"
+    AGENT_WEBSDK = "agent_websdk"
+
+class LaunchMode(str, Enum):
+    NATIVE = "native"
+    WEBSDK = "websdk"
+
+class UserCtx(BaseModel):
+    emp_no: str
+    name: str = "Mock User"
+    dept: str = "demo"
+    roles: list[str] = Field(default_factory=lambda: ["employee"])
+
+class Resource(BaseModel):
+    id: str
+    name: str
+    type: ResourceType
+    launch_mode: LaunchMode
+    group: str
+    description: str
+    enabled: bool = True
+    tags: list[str] = Field(default_factory=list)
+    config: dict[str, Any] = Field(default_factory=dict)
+
+class PortalSession(BaseModel):
+    id: str
+    emp_no: str
+    resource_id: str
+    engine_type: Literal["opencode"]
+    engine_session_id: str
+    title: str
+    skill_name: str | None = None
+    created_at: int
+    updated_at: int
+
+class LaunchRecord(BaseModel):
+    id: str
+    emp_no: str
+    resource_id: str
+    resource_type: str
+    trace_id: str
+    created_at: int
+    launch_kind: Literal["websdk"]
+    payload: dict[str, Any] = Field(default_factory=dict)
+```
+
+---
+
+## 4）资源目录配置
+
+V1 用 JSON/YAML 管理最省事。
+
+```json
+// config/resources.json
+[
+  {
+    "id": "general-chat",
+    "name": "通用助手",
+    "type": "direct_chat",
+    "launch_mode": "native",
+    "group": "基础对话",
+    "description": "通用问答与任务协助",
+    "tags": ["chat"],
+    "config": {
+      "workspace_id": "default",
+      "model": "default"
+    }
+  },
+  {
+    "id": "skill-api-review",
+    "name": "API 评审",
+    "type": "skill",
+    "launch_mode": "native",
+    "group": "Skill 商店",
+    "description": "按既定流程评审 API 设计",
+    "tags": ["skill", "研发"],
+    "config": {
+      "workspace_id": "default",
+      "skill_name": "api-review",
+      "starter_prompts": [
+        "请按这个 skill 的流程帮我审查这份 API 设计",
+        "先判断当前需求是否适合这个 skill",
+        "给我一个评审结论和修改建议"
+      ]
+    }
+  },
+  {
+    "id": "kb-policy",
+    "name": "制度知识库",
+    "type": "kb_websdk",
+    "launch_mode": "websdk",
+    "group": "知识库",
+    "description": "公司制度与流程问答",
+    "tags": ["kb"],
+    "config": {
+      "script_url": "http://hostip:port/resources/product/llm/public/sdk/embedLite.js",
+      "app_key": "kb_app_key",
+      "base_url": "http://hostip:port/kb/chat"
+    }
+  },
+  {
+    "id": "agent-hr",
+    "name": "HR 助手",
+    "type": "agent_websdk",
+    "launch_mode": "websdk",
+    "group": "部门应用",
+    "description": "HR 相关对话应用",
+    "tags": ["agent"],
+    "config": {
+      "script_url": "http://hostip:port/resources/product/llm/public/sdk/embedLite.js",
+      "app_key": "hr_agent_key",
+      "base_url": "http://hostip:port/hr/chat"
+    }
+  }
+]
+```
+
+---
+
+## 四、基础模块设计
+
+## 1）鉴权模块：先 mock，接口不变
+
+建议把真实 SSO 的接入点固定为一个函数：
+
+```python
+# app/auth/service.py
+def resolve_emp_no_from_sso(code: str) -> str:
+    # TODO: 后续替换成真实 SSO code -> userinfo -> emp_no
+    if code.startswith("mock-"):
+        return code.replace("mock-", "", 1)
+    raise ValueError("unsupported sso code")
+```
+
+FastAPI 里做回调：
+
+```python
+# app/auth/routes.py
+import time, jwt
+from fastapi import APIRouter, Response, HTTPException, Depends, Request
+from pydantic import BaseModel
+
+router = APIRouter(prefix="/api/auth", tags=["auth"])
+JWT_SECRET = "replace-me"
+
+@router.get("/mock-login")
+async def mock_login(emp_no: str = "E10001"):
+    token = jwt.encode(
+        {"emp_no": emp_no, "name": f"User-{emp_no}", "dept": "demo", "roles": ["employee"], "iat": int(time.time())},
+        JWT_SECRET,
+        algorithm="HS256",
+    )
+    resp = Response(status_code=302)
+    resp.headers["Location"] = "/"
+    resp.set_cookie("portal_token", token, httponly=True)
+    return resp
+
+@router.get("/callback")
+async def auth_callback(code: str):
+    try:
+        emp_no = resolve_emp_no_from_sso(code)
+    except ValueError:
+        raise HTTPException(400, "invalid sso code")
+
+    token = jwt.encode(
+        {"emp_no": emp_no, "name": f"User-{emp_no}", "dept": "demo", "roles": ["employee"], "iat": int(time.time())},
+        JWT_SECRET,
+        algorithm="HS256",
+    )
+    resp = Response(status_code=302)
+    resp.headers["Location"] = "/"
+    resp.set_cookie("portal_token", token, httponly=True)
+    return resp
+```
+
+登录依赖：
+
+```python
+# app/auth/deps.py
+import jwt
+from fastapi import Request, HTTPException
+from app.models import UserCtx
+
+JWT_SECRET = "replace-me"
+
+async def get_current_user(request: Request) -> UserCtx:
+    token = request.cookies.get("portal_token")
+    if not token:
+        raise HTTPException(401, "not logged in")
+    try:
+        payload = jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
+    except Exception:
+        raise HTTPException(401, "invalid token")
+    return UserCtx(**payload)
+```
+
+### 一个很实用的建议
+
+即使现在 mock，也不要让下游应用直接信任浏览器传来的工号。
+V1 就开始统一传 **`launch_token`**，只是 token 里先带 `emp_no`。后面切真实 SSO 时，不需要改前端协议。
+
+---
+
+## 2）Flask mock SSO（本地联调用）
+
+你提到技术栈里也会有 Flask，这里最适合拿来做一个本地 mock-sso。
+
+```python
+# mock_sso.py
+from flask import Flask, request, redirect
+
+app = Flask(__name__)
+
+@app.get("/login")
+def login():
+    redirect_uri = request.args.get("redirect_uri")
+    emp_no = request.args.get("emp_no", "E10001")
+    return redirect(f"{redirect_uri}?code=mock-{emp_no}")
+
+if __name__ == "__main__":
+    app.run(port=5001, debug=True)
+```
+
+---
+
+## 3）资源目录 + 权限模块
+
+```python
+# app/catalog/service.py
+import json
+from pathlib import Path
+from app.models import Resource
+
+class ResourceCatalog:
+    def __init__(self, path: str = "config/resources.json"):
+        self.path = Path(path)
+        self._items = [Resource(**x) for x in json.loads(self.path.read_text("utf-8"))]
+
+    def list_all(self) -> list[Resource]:
+        return [x for x in self._items if x.enabled]
+
+    def get(self, resource_id: str) -> Resource | None:
+        for item in self._items:
+            if item.id == resource_id and item.enabled:
+                return item
+        return None
+```
+
+权限先做简单版：
+
+```python
+# app/acl/service.py
+from app.models import Resource, UserCtx
+
+ACL = {
+    "general-chat": {"roles": ["employee", "admin"]},
+    "skill-api-review": {"roles": ["employee", "admin"]},
+    "kb-policy": {"roles": ["employee", "admin"]},
+    "agent-hr": {"roles": ["hr", "admin"]}
+}
+
+def can_access(user: UserCtx, resource: Resource) -> bool:
+    rule = ACL.get(resource.id)
+    if not rule:
+        return False
+    return any(role in user.roles for role in rule["roles"])
+```
+
+---
+
+## 4）Session Center 与 Launch Record Center
+
+这里要故意分开：
+
+### 原生对话 / Skill
+
+* 建 `PortalSession`
+* 映射到底层 OpenCode session
+* Portal 左侧展示 session 列表
+* 历史消息直接从 OpenCode 拉
+
+### websdk 应用
+
+* 不建 PortalSession
+* 只记 `LaunchRecord`
+* 左侧只展示“最近打开”
+
+这样最符合你现在的 V1 需求。
+
+Redis 存储层：
+
+```python
+# app/store/redis_store.py
+import time, json
+from redis.asyncio import Redis
+from app.models import PortalSession, LaunchRecord
+
+class PortalStore:
+    def __init__(self, redis: Redis):
+        self.redis = redis
+
+    async def save_session(self, session: PortalSession):
+        key = f"portal:session:{session.id}"
+        await self.redis.hset(key, mapping=session.model_dump(mode="json"))
+        await self.redis.zadd(f"portal:user:{session.emp_no}:sessions", {session.id: time.time()})
+
+    async def get_session(self, session_id: str) -> PortalSession | None:
+        data = await self.redis.hgetall(f"portal:session:{session_id}")
+        return PortalSession(**data) if data else None
+
+    async def list_user_sessions(self, emp_no: str) -> list[str]:
+        return await self.redis.zrevrange(f"portal:user:{emp_no}:sessions", 0, 49)
+
+    async def save_launch(self, launch: LaunchRecord):
+        key = f"portal:launch:{launch.id}"
+        await self.redis.hset(key, mapping=launch.model_dump(mode="json"))
+        await self.redis.zadd(f"portal:user:{launch.emp_no}:launches", {launch.id: time.time()})
+
+    async def get_launch(self, launch_id: str) -> LaunchRecord | None:
+        data = await self.redis.hgetall(f"portal:launch:{launch_id}")
+        return LaunchRecord(**data) if data else None
+```
+
+---
+
+## 五、执行层代码骨架
+
+## 1）OpenCodeAdapter
+
+OpenCode server 支持 `opencode serve`、CORS 白名单和 basic auth；接口上有 session、message、`prompt_async` 与 SSE 事件流，所以后端封装这层最自然。([OpenCode][1])
+
+```python
+# app/adapters/opencode.py
+import httpx
+
+class OpenCodeAdapter:
+    def __init__(self, base_url: str, username: str | None = None, password: str | None = None):
+        self.base_url = base_url.rstrip("/")
+        self.auth = (username, password) if password else None
+
+    async def _get(self, path: str):
+        async with httpx.AsyncClient(timeout=60, auth=self.auth) as client:
+            resp = await client.get(f"{self.base_url}{path}")
+            resp.raise_for_status()
+            return resp.json()
+
+    async def _post(self, path: str, payload: dict, expect_json: bool = True):
+        async with httpx.AsyncClient(timeout=120, auth=self.auth) as client:
+            resp = await client.post(f"{self.base_url}{path}", json=payload)
+            resp.raise_for_status()
+            if expect_json:
+                return resp.json()
+            return None
+
+    async def create_session(self, title: str | None = None) -> dict:
+        payload = {}
+        if title:
+            payload["title"] = title
+        return await self._post("/session", payload)
+
+    async def list_messages(self, session_id: str, limit: int = 100) -> list[dict]:
+        return await self._get(f"/session/{session_id}/message?limit={limit}")
+
+    async def send_message(
+        self,
+        session_id: str,
+        text: str,
+        *,
+        system: str | None = None,
+        model: dict | None = None
+    ) -> dict:
+        payload = {
+            "parts": [{"type": "text", "text": text}]
+        }
+        if system:
+            payload["system"] = system
+        if model:
+            payload["model"] = model
+        return await self._post(f"/session/{session_id}/message", payload)
+
+    async def send_message_async(self, session_id: str, payload: dict) -> None:
+        await self._post(f"/session/{session_id}/prompt_async", payload, expect_json=False)
+```
+
+---
+
+## 2）SkillChatAdapter
+
+```python
+# app/adapters/skill_chat.py
+from app.adapters.opencode import OpenCodeAdapter
+
+def build_skill_system_prompt(skill_name: str, desc: str = "") -> str:
+    return f"""
+You are in skill mode "{skill_name}".
+Treat this skill as the primary workflow for this session.
+Use the native skill tool to load "{skill_name}" when needed.
+Do not silently switch to another skill.
+If the user's request is outside this skill, explain briefly and ask whether to exit skill mode.
+Skill summary: {desc}
+""".strip()
+
+class SkillChatAdapter:
+    def __init__(self, opencode: OpenCodeAdapter):
+        self.opencode = opencode
+
+    async def create_session(self, *, resource: dict, user: dict, trace_id: str) -> dict:
+        return await self.opencode.create_session(title=resource["name"])
+
+    async def send_message(self, *, session_meta: dict, text: str, user: dict, trace_id: str) -> dict:
+        system = build_skill_system_prompt(
+            skill_name=session_meta["skill_name"],
+            desc=session_meta.get("skill_desc", "")
+        )
+        return await self.opencode.send_message(
+            session_id=session_meta["engine_session_id"],
+            text=text,
+            system=system
+        )
+
+    async def list_messages(self, *, session_meta: dict, trace_id: str) -> list[dict]:
+        return await self.opencode.list_messages(session_meta["engine_session_id"])
+```
+
+这里的关键点是：Skill 卡片、权限、入口由 Portal 控；真正的 skill 执行仍交给 OpenCode 原生 skill 机制。OpenCode 官方文档明确写了 skill 是从 `SKILL.md` 发现，并由原生 `skill` 工具按需加载。([OpenCode][2])
+
+---
+
+## 3）WebSDKAdapter
+
+```python
+# app/adapters/websdk.py
+import time
+import jwt
+from urllib.parse import urlencode, urlsplit, urlunsplit, parse_qsl
+from app.models import Resource, UserCtx
+
+LAUNCH_SECRET = "replace-me"
+
+def append_query(url: str, extra: dict[str, str]) -> str:
+    parts = list(urlsplit(url))
+    query = dict(parse_qsl(parts[3]))
+    query.update(extra)
+    parts[3] = urlencode(query)
+    return urlunsplit(parts)
+
+class WebSDKAdapter:
+    async def launch(self, *, resource: Resource, user: UserCtx, trace_id: str) -> dict:
+        launch_token = jwt.encode(
+            {
+                "emp_no": user.emp_no,
+                "resource_id": resource.id,
+                "trace_id": trace_id,
+                "iat": int(time.time()),
+                "exp": int(time.time()) + 600
+            },
+            LAUNCH_SECRET,
+            algorithm="HS256"
+        )
+
+        # V1 兼容期：既传 launch_token，也可选传 emp_no
+        base_url = append_query(resource.config["base_url"], {
+            "launch_token": launch_token,
+            "emp_no": user.emp_no,
+            "trace_id": trace_id
+        })
+
+        return {
+            "kind": "websdk",
+            "script_url": resource.config["script_url"],
+            "app_key": resource.config["app_key"],
+            "base_url": base_url
+        }
+```
+
+---
+
+## 4）OpenWorkAdapter
+
+OpenWork server 当前 README 已经列出 `/workspace/:id/skills`、`PATCH /workspace/:id/config`、`POST /workspace/:id/engine/reload` 等 endpoint，而且官方架构文档明确要求文件系统变更尽量都走 server。([GitHub][4])
+
+```python
+# app/adapters/openwork.py
+import httpx
+
+class OpenWorkAdapter:
+    def __init__(self, base_url: str, token: str):
+        self.base_url = base_url.rstrip("/")
+        self.headers = {"Authorization": f"Bearer {token}"}
+
+    async def list_skills(self, workspace_id: str) -> list[dict]:
+        async with httpx.AsyncClient(timeout=30, headers=self.headers) as client:
+            resp = await client.get(f"{self.base_url}/workspace/{workspace_id}/skills")
+            resp.raise_for_status()
+            return resp.json()
+
+    async def reload_engine(self, workspace_id: str) -> bool:
+        async with httpx.AsyncClient(timeout=30, headers=self.headers) as client:
+            resp = await client.post(f"{self.base_url}/workspace/{workspace_id}/engine/reload")
+            resp.raise_for_status()
+            return True
+```
+
+---
+
+## 六、FastAPI 主路由
+
+```python
+# app/main.py
+import time
+import uuid
+from fastapi import FastAPI, Depends, HTTPException
+from redis.asyncio import Redis
+
+from app.models import ResourceType, PortalSession, LaunchRecord
+from app.auth.deps import get_current_user
+from app.catalog.service import ResourceCatalog
+from app.acl.service import can_access
+from app.store.redis_store import PortalStore
+from app.adapters.opencode import OpenCodeAdapter
+from app.adapters.skill_chat import SkillChatAdapter
+from app.adapters.websdk import WebSDKAdapter
+from app.adapters.openwork import OpenWorkAdapter
+
+app = FastAPI(title="AI Portal")
+
+catalog = ResourceCatalog()
+redis = Redis.from_url("redis://localhost:6379/0", decode_responses=True)
+store = PortalStore(redis)
+
+opencode = OpenCodeAdapter("http://127.0.0.1:4096", username="opencode", password="your-password")
+skill_chat = SkillChatAdapter(opencode)
+websdk = WebSDKAdapter()
+openwork = OpenWorkAdapter("http://127.0.0.1:8787", token="openwork-client-token")
+
+@app.get("/api/resources")
+async def list_resources(user = Depends(get_current_user)):
+    items = [r for r in catalog.list_all() if can_access(user, r)]
+    return [x.model_dump() for x in items]
+
+@app.get("/api/skills")
+async def list_skills(user = Depends(get_current_user)):
+    items = [r for r in catalog.list_all() if r.type == ResourceType.SKILL and can_access(user, r)]
+    # 可选：和 OpenWork 实际安装状态合并
+    installed = {x.get("name") for x in await openwork.list_skills("default")}
+    result = []
+    for item in items:
+        skill_name = item.config["skill_name"]
+        result.append({
+            **item.model_dump(),
+            "installed": skill_name in installed
+        })
+    return result
+
+@app.post("/api/resources/{resource_id}/launch")
+async def launch_resource(resource_id: str, user = Depends(get_current_user)):
+    resource = catalog.get(resource_id)
+    if not resource:
+        raise HTTPException(404, "resource not found")
+    if not can_access(user, resource):
+        raise HTTPException(403, "forbidden")
+
+    trace_id = str(uuid.uuid4())
+    now = int(time.time())
+
+    if resource.type in (ResourceType.DIRECT_CHAT, ResourceType.SKILL):
+        engine_session = await opencode.create_session(title=resource.name)
+        portal_session_id = str(uuid.uuid4())
+
+        session = PortalSession(
+            id=portal_session_id,
+            emp_no=user.emp_no,
+            resource_id=resource.id,
+            engine_type="opencode",
+            engine_session_id=engine_session["id"],
+            title=resource.name,
+            skill_name=resource.config.get("skill_name"),
+            created_at=now,
+            updated_at=now
+        )
+        await store.save_session(session)
+
+        return {
+            "kind": "native",
+            "portal_session_id": portal_session_id,
+            "resource": resource.model_dump()
+        }
+
+    launch_payload = await websdk.launch(resource=resource, user=user, trace_id=trace_id)
+    launch = LaunchRecord(
+        id=str(uuid.uuid4()),
+        emp_no=user.emp_no,
+        resource_id=resource.id,
+        resource_type=resource.type.value,
+        trace_id=trace_id,
+        created_at=now,
+        launch_kind="websdk",
+        payload=launch_payload
+    )
+    await store.save_launch(launch)
+
+    return {
+        "kind": "websdk",
+        "launch_id": launch.id,
+        "resource": resource.model_dump()
+    }
+
+@app.get("/api/launches/{launch_id}/embed-config")
+async def get_embed_config(launch_id: str, user = Depends(get_current_user)):
+    launch = await store.get_launch(launch_id)
+    if not launch or launch.emp_no != user.emp_no:
+        raise HTTPException(404, "launch not found")
+    return launch.payload
+
+@app.get("/api/sessions")
+async def list_sessions(user = Depends(get_current_user)):
+    ids = await store.list_user_sessions(user.emp_no)
+    sessions = []
+    for sid in ids:
+        meta = await store.get_session(sid)
+        if meta:
+            sessions.append(meta.model_dump())
+    return sessions
+
+@app.get("/api/sessions/{portal_session_id}/messages")
+async def get_messages(portal_session_id: str, user = Depends(get_current_user)):
+    meta = await store.get_session(portal_session_id)
+    if not meta or meta.emp_no != user.emp_no:
+        raise HTTPException(404, "session not found")
+    return await opencode.list_messages(meta.engine_session_id)
+
+@app.post("/api/sessions/{portal_session_id}/messages")
+async def send_message(portal_session_id: str, body: dict, user = Depends(get_current_user)):
+    meta = await store.get_session(portal_session_id)
+    if not meta or meta.emp_no != user.emp_no:
+        raise HTTPException(404, "session not found")
+
+    text = body["text"]
+    trace_id = str(uuid.uuid4())
+
+    if meta.skill_name:
+        result = await skill_chat.send_message(
+            session_meta=meta.model_dump(),
+            text=text,
+            user=user.model_dump(),
+            trace_id=trace_id
+        )
+    else:
+        result = await opencode.send_message(
+            session_id=meta.engine_session_id,
+            text=text
+        )
+
+    return result
+```
+
+---
+
+## 七、websdk 的前端实现
+
+## 1）为什么我建议用“独立 html host 页”
+
+你给的 websdk 代码是直接往 html body 里塞 script 并初始化。
+这类 SDK 往往不是为 React/Vue 组件化容器设计的，所以 V1 最稳的做法不是在 SPA 里直接 mount，而是：
+
+* Portal 主应用里放一个 iframe
+* iframe 指向一个专门的 `sdk-host.html`
+* `sdk-host.html` 再去拉取 launch config 并注入 SDK script
+
+这样 SDK 污染不到主应用 DOM，也更容易隔离样式/全局变量。
+
+---
+
+## 2）sdk-host.html
+
+```html
+<!-- public/sdk-host.html -->
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>SDK Host</title>
+  <style>
+    html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; }
+  </style>
+</head>
+<body>
+  <script>
+    (async function () {
+      const qs = new URLSearchParams(location.search);
+      const launchId = qs.get("launchId");
+
+      const resp = await fetch(`/api/launches/${launchId}/embed-config`, {
+        credentials: "include"
+      });
+      if (!resp.ok) {
+        document.body.innerHTML = "<pre>load embed config failed</pre>";
+        return;
+      }
+
+      const cfg = await resp.json();
+
+      const script = document.createElement("script");
+      script.src = cfg.script_url;
+      script.onload = function () {
+        // 按你给的 SDK 形式初始化
+        new HiagentWebSDK.WebLiteClient({
+          appKey: cfg.app_key,
+          baseUrl: cfg.base_url
+        });
+      };
+      document.body.appendChild(script);
+    })();
+  </script>
+</body>
+</html>
+```
+
+---
+
+## 3）前端 TS 类型
+
+```ts
+// src/types.ts
+export type ResourceType = "direct_chat" | "skill" | "kb_websdk" | "agent_websdk";
+
+export type Resource = {
+  id: string;
+  name: string;
+  type: ResourceType;
+  launch_mode: "native" | "websdk";
+  group: string;
+  description: string;
+  tags: string[];
+  config: Record<string, any>;
+};
+
+export type LaunchResult =
+  | { kind: "native"; portal_session_id: string; resource: Resource }
+  | { kind: "websdk"; launch_id: string; resource: Resource };
+```
+
+---
+
+## 4）前端 API
+
+```ts
+// src/api.ts
+export async function getResources() {
+  return fetch("/api/resources", { credentials: "include" }).then(r => r.json());
+}
+
+export async function launchResource(resourceId: string) {
+  return fetch(`/api/resources/${resourceId}/launch`, {
+    method: "POST",
+    credentials: "include"
+  }).then(r => r.json());
+}
+
+export async function getSessions() {
+  return fetch("/api/sessions", { credentials: "include" }).then(r => r.json());
+}
+
+export async function getMessages(sessionId: string) {
+  return fetch(`/api/sessions/${sessionId}/messages`, { credentials: "include" }).then(r => r.json());
+}
+
+export async function sendMessage(sessionId: string, text: string) {
+  return fetch(`/api/sessions/${sessionId}/messages`, {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ text })
+  }).then(r => r.json());
+}
+```
+
+---
+
+## 5）统一工作区组件
+
+```tsx
+// src/WorkspacePane.tsx
+import React from "react";
+
+export function WorkspacePane({ active }: { active: any }) {
+  if (!active) {
+    return <div className="empty">请选择一个资源</div>;
+  }
+
+  if (active.kind === "native") {
+    return <NativeChatPage portalSessionId={active.portal_session_id} />;
+  }
+
+  if (active.kind === "websdk") {
+    return (
+      <iframe
+        src={`/sdk-host.html?launchId=${active.launch_id}`}
+        style={{ width: "100%", height: "100%", border: "none" }}
+      />
+    );
+  }
+
+  return null;
+}
+```
+
+---
+
+## 6）原生对话页
+
+```tsx
+// src/NativeChatPage.tsx
+import React, { useEffect, useState } from "react";
+import { getMessages, sendMessage } from "./api";
+
+export function NativeChatPage({ portalSessionId }: { portalSessionId: string }) {
+  const [messages, setMessages] = useState<any[]>([]);
+  const [text, setText] = useState("");
+
+  useEffect(() => {
+    getMessages(portalSessionId).then(setMessages);
+  }, [portalSessionId]);
+
+  async function onSend() {
+    if (!text.trim()) return;
+    const userText = text;
+    setText("");
+
+    setMessages(prev => [...prev, { info: { role: "user" }, parts: [{ type: "text", text: userText }] }]);
+
+    const resp = await sendMessage(portalSessionId, userText);
+    // 这里可以按 OpenCode 返回结构做 normalize
+    setMessages(prev => [...prev, resp]);
+  }
+
+  return (
+    <div className="chat-page">
+      <div className="messages">
+        {messages.map((m, i) => (
+          <pre key={i}>{JSON.stringify(m, null, 2)}</pre>
+        ))}
+      </div>
+      <div className="input-bar">
+        <textarea value={text} onChange={e => setText(e.target.value)} />
+        <button onClick={onSend}>发送</button>
+      </div>
+    </div>
+  );
+}
+```
+
+---
+
+## 八、Skill 商店的 V1 做法
+
+V1 不做编辑，所以 Skill 商店建议：
+
+* **Portal catalog**：管展示、分组、权限、描述、starter prompts
+* **OpenWork server**：管“这个 skill 当前是否已安装在 workspace”
+* **OpenCode**：真正运行 skill
+
+实现上就是：
+
+1. `/api/skills` 返回 Portal 可见 skill
+2. 再用 OpenWork `GET /workspace/:id/skills` 标记 `installed`
+3. 用户点击后直接 `POST /api/resources/{id}/launch`
+4. 发消息时自动进入 skill mode
+
+这版已经满足你要的“可用可控”。
+不做编辑，也不要求 Portal 直接读写 `SKILL.md`。
+
+---
+
+## 九、日志与 trace
+
+OpenWork 官方 orchestrator 文档已经说明可以输出统一日志流、JSON 格式、稳定 run id 关联，并且 OpenWork server 会记录 request 的 method/path/status/duration。你自己的 Portal 最好沿用同样的思路。([GitHub][5])
+
+建议所有请求统一打这些字段：
+
+```python
+# app/logging.py
+import time, uuid, json
+from starlette.middleware.base import BaseHTTPMiddleware
+
+class TraceMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request, call_next):
+        trace_id = request.headers.get("X-Trace-Id") or str(uuid.uuid4())
+        start = time.time()
+        response = await call_next(request)
+        cost = int((time.time() - start) * 1000)
+
+        log = {
+            "trace_id": trace_id,
+            "path": request.url.path,
+            "method": request.method,
+            "status": response.status_code,
+            "cost_ms": cost,
+        }
+        print(json.dumps(log, ensure_ascii=False))
+        response.headers["X-Trace-Id"] = trace_id
+        return response
+```
+
+### 建议 trace 维度
+
+* `trace_id`
+* `emp_no`
+* `resource_id`
+* `portal_session_id`
+* `engine_session_id`
+* `launch_id`
+* `adapter`
+* `cost_ms`
+
+---
+
+## 十、Redis key 设计
+
+```text
+portal:session:{session_id}              HASH
+portal:user:{emp_no}:sessions            ZSET
+
+portal:launch:{launch_id}                HASH
+portal:user:{emp_no}:launches            ZSET
+
+portal:resource:cache                    STRING / HASH
+portal:skill:installed:{workspace_id}    HASH
+```
+
+---
+
+## 十一、关键流程伪代码
+
+## 1）登录流程
+
+```text
+User -> /login
+  -> mock-sso or future real sso
+  -> callback(code)
+  -> resolve_emp_no_from_sso(code)
+  -> sign portal_token
+  -> set cookie
+  -> redirect /
+```
+
+## 2）启动原生对话
+
+```text
+click resource
+  -> POST /api/resources/{id}/launch
+  -> ACL check
+  -> OpenCode create session
+  -> save PortalSession(redis)
+  -> return kind=native + portal_session_id
+  -> frontend open NativeChatPage
+```
+
+## 3）启动 Skill 对话
+
+```text
+click skill
+  -> POST /api/resources/{id}/launch
+  -> ACL check
+  -> OpenCode create session
+  -> save PortalSession(skill_name=xxx)
+  -> frontend open NativeChatPage
+  -> send message
+       -> backend sees skill_name
+       -> inject system prompt
+       -> call OpenCode /session/:id/message
+```
+
+## 4）启动 websdk 知识库 / 旧应用
+
+```text
+click resource
+  -> POST /api/resources/{id}/launch
+  -> ACL check
+  -> sign launch_token
+  -> save LaunchRecord(redis)
+  -> return launch_id
+  -> frontend open iframe(/sdk-host.html?launchId=xxx)
+  -> sdk-host loads config
+  -> inject script + init SDK
+```
+
+---
+
+## 十二、V1 第一轮开发顺序
+
+我建议按这个顺序做，最稳：
+
+1. `mock auth + portal_token`
+2. `resource catalog + ACL`
+3. `OpenCodeAdapter + 原生对话`
+4. `PortalSession + Redis`
+5. `SkillChatAdapter + Skill 商店`
+6. `WebSDKAdapter + sdk-host.html`
+7. `LaunchRecord + 最近打开`
+8. `OpenWorkAdapter + skill installed 状态`
+9. `trace middleware + JSON log`
+
+---
+
+## 十三、一个部署提醒
+
+如果你把 OpenCode 暴露给 Portal BFF，建议从第一天就开：
+
+* `opencode serve --cors ...`
+* `OPENCODE_SERVER_PASSWORD=...`
+
+因为 OpenCode 官方就支持 CORS 白名单和 basic auth，这样你的执行层不会一开始就裸奔。([OpenCode][1])
+
+
+```
