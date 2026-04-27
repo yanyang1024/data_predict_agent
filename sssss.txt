@@ -1,0 +1,40 @@
+已整理成四份独立文档，并同时提供 **DOCX + Markdown**。四份 DOCX 已完成渲染检查，页数分别为 13、13、15、18 页。
+
+打包下载：
+
+[下载全部四份文档 ZIP](sandbox:/mnt/data/semiconductor_skill_training_documents.zip)
+
+## 1. 面向 Skill 学习者：数字研发人员手册
+
+适合已有数据处理、Python / SQL / API 基础，并了解部分半导体业务的工程师。重点讲清楚 Skill 在 Agentic 化转型中的定位、三层复用架构、Inline SPC 样例、二次开发 SOP、Skill 输出模板和常见错误。
+
+[DOCX：Skill 学习者手册](sandbox:/mnt/data/semiconductor_skill_docs/01_skill_learner_handbook.docx)
+[Markdown：Skill 学习者手册](sandbox:/mnt/data/semiconductor_skill_docs/01_skill_learner_handbook.md)
+
+## 2. 面向培训者：培训演讲稿
+
+适合内部讲师直接拿去授课。包含 150–180 分钟培训节奏、模块讲稿、演示脚本、练习题、互动问题、FAQ 和课后材料清单。
+
+[DOCX：培训演讲稿](sandbox:/mnt/data/semiconductor_skill_docs/02_trainer_script.docx)
+[Markdown：培训演讲稿](sandbox:/mnt/data/semiconductor_skill_docs/02_trainer_script.md)
+
+## 3. 面向刚入职新人：半导体业务 + AI Agent 入门
+
+适合既不熟悉半导体业务、也不熟悉 AI Agent 的新人。内容从 wafer、lot、tool、chamber、recipe、Inline、WAT、FDC、Yield 讲起，再过渡到 Agent、Tool、Skill、opencode 和三层架构，并包含 30 天学习计划。
+
+[DOCX：新人入门教程](sandbox:/mnt/data/semiconductor_skill_docs/03_newcomer_onboarding.docx)
+[Markdown：新人入门教程](sandbox:/mnt/data/semiconductor_skill_docs/03_newcomer_onboarding.md)
+
+## 4. opencode 使用教程：Skill 使用与基础操作
+
+适合团队成员实际使用 opencode。包含 `AGENTS.md`、`.opencode/skills/`、`.opencode/commands/`、`.opencode/tools/`、`opencode.json`、Plan / Build agent、权限、MCP、Inline SPC Skill 创建流程和排障清单。
+
+[DOCX：opencode 使用教程](sandbox:/mnt/data/semiconductor_skill_docs/04_opencode_skill_usage_guide.docx)
+[Markdown：opencode 使用教程](sandbox:/mnt/data/semiconductor_skill_docs/04_opencode_skill_usage_guide.md)
+
+文档中的 opencode 章节按官方文档整理：Skill 的发现路径和 `SKILL.md` frontmatter、Command 目录、Custom Tool 定义方式、`AGENTS.md` 项目规则、Plan / Build agent、权限配置和 MCP 注意事项都做了更新。([OpenCode][1])
+
+三层架构里关于查询 API 和绘图输出的工程建议，也参考了 FastAPI 使用 Pydantic model 声明 request body 并生成 OpenAPI schema 的官方说明，以及 Plotly 交互式 HTML 导出的官方说明。([FastAPI][2])
+
+[1]: https://opencode.ai/docs/skills "https://opencode.ai/docs/skills"
+[2]: https://fastapi.tiangolo.com/tutorial/body/ "https://fastapi.tiangolo.com/tutorial/body/"
