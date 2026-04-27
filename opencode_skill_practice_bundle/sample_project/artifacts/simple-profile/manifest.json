@@ -1,0 +1,18 @@
+{
+  "capability": "simple-data-quality-analysis",
+  "version": "0.1.0",
+  "input_path": "data/sample_measurements.csv",
+  "output_dir": "artifacts/simple-profile",
+  "outputs": {
+    "summary": "artifacts/simple-profile/summary.json",
+    "group_summary": "artifacts/simple-profile/group_summary.csv",
+    "trend_html": "artifacts/simple-profile/trend.html"
+  },
+  "row_count": 90,
+  "valid_value_count": 89,
+  "outlier_count": 1,
+  "warnings": [
+    "value column contains missing or non-numeric values",
+    "potential outliers detected by z-score rule"
+  ]
+}

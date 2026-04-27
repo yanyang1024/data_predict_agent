@@ -1,0 +1,16 @@
+{
+  "input_path": "data/sample_measurements.csv",
+  "row_count": 90,
+  "valid_value_count": 89,
+  "missing_value_count": 1,
+  "value_column": "measurement_value",
+  "group_column": "equipment_id",
+  "time_column": "measurement_time",
+  "mean": 50.18817977528089,
+  "std": 1.3714607554273006,
+  "min": 47.387,
+  "max": 56.616,
+  "z_threshold": 3.0,
+  "outlier_count": 1,
+  "group_count": 3
+}
