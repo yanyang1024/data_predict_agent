@@ -1,0 +1,9 @@
+{
+  "by_component": {
+    "api": 1,
+    "scheduler": 1,
+    "worker": 1
+  },
+  "threshold": 2,
+  "total_retained": 3
+}

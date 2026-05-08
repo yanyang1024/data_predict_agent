@@ -1,0 +1,31 @@
+{
+  "schema_version": "pattern-extraction-v1",
+  "record_delimiters": {
+    "start": "---PATTERN---",
+    "end": "---END---"
+  },
+  "fields": [
+    "PATTERN_ID",
+    "OBJECTIVE",
+    "NATIVE",
+    "EXPECTED",
+    "HUMAN_REVIEW"
+  ],
+  "must_capture": [
+    "pattern_id",
+    "objective",
+    "native_instruction",
+    "expected_result",
+    "human_review"
+  ],
+  "do_not_infer": [
+    "voltage levels",
+    "coverage completeness",
+    "signoff readiness"
+  ],
+  "human_checkpoints": [
+    "Review extracted pattern list against source document.",
+    "Review adaptation plan before code generation.",
+    "Review generated logic even if syntax validation passes."
+  ]
+}

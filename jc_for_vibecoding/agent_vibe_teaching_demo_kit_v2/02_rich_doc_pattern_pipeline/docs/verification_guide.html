@@ -1,0 +1,42 @@
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>Portable Protocol Verification Guide</title></head>
+<body>
+<article>
+<h1>Portable Protocol Verification Guide v0.3</h1>
+<p><strong>Teaching note:</strong> This synthetic guide uses rich text and a machine-readable annotation block.</p>
+<table border="1">
+<tr><th>Pattern</th><th>Purpose</th><th>Review needed</th></tr>
+<tr><td>RESET_STABILITY</td><td>Reset behavior</td><td>Reset deassertion timing</td></tr>
+<tr><td>BURST_WRITE_ACK</td><td>Burst write ack</td><td>Address wraparound</td></tr>
+<tr><td>CLOCK_JITTER_TOLERANCE</td><td>Clock stress</td><td>Jitter distribution</td></tr>
+</table>
+<pre id="machine-readable-patterns">
+---PATTERN---
+PATTERN_ID: RESET_STABILITY
+OBJECTIVE: Verify that reset deassertion leads to ready within the allowed window.
+NATIVE: DRIVE RESET LOW 5ns; DRIVE RESET HIGH; EXPECT READY WITHIN 20 CYCLES
+EXPECTED: ready == 1 within 20 cycles after reset release
+HUMAN_REVIEW: Confirm reset deassertion timing with the design owner.
+---END---
+
+---PATTERN---
+PATTERN_ID: BURST_WRITE_ACK
+OBJECTIVE: Verify that four consecutive writes receive acknowledgements.
+NATIVE: LOOP 4 WRITE ADDR++ DATA++; EXPECT ACK EACH WRITE
+EXPECTED: ack == 1 for every write operation
+HUMAN_REVIEW: Confirm whether address wraparound is legal.
+---END---
+
+---PATTERN---
+PATTERN_ID: CLOCK_JITTER_TOLERANCE
+OBJECTIVE: Verify that the block remains stable when clock jitter is applied within environment limits.
+NATIVE: SET CLOCK_JITTER MAX_ALLOWED; RUN 100 CYCLES; EXPECT READY STABLE
+EXPECTED: ready remains stable during jitter run
+HUMAN_REVIEW: Confirm jitter distribution and measurement method.
+---END---
+</pre>
+<section><h2>Do not infer</h2><ul><li>Voltage levels</li><li>Coverage completeness</li><li>Signoff readiness</li></ul></section>
+</article>
+</body>
+</html>

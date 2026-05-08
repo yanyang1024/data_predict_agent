@@ -1,0 +1,8 @@
+{
+  "environment": "training-only-protected-config",
+  "threshold": {
+    "warning": 0.7,
+    "critical": 0.9
+  },
+  "note": "This file represents important config. Agents must not edit it directly."
+}

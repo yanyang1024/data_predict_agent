@@ -1,0 +1,6 @@
+timestamp,asset,metric,value,unit
+2026-04-01,PILOT_A,latency_ms,120,ms
+2026-04-02,PILOT_A,latency_ms,135,ms
+2026-04-05,PILOT_A,error_rate,0.02,ratio
+2026-04-10,PILOT_A,latency_ms,128,ms
+2026-04-03,PILOT_B,latency_ms,150,ms

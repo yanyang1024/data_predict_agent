@@ -1,0 +1,42 @@
+{
+  "source_platform": "Alpha",
+  "target_platform": "Beta",
+  "required_traceability": [
+    "REQ-1",
+    "REQ-2",
+    "REQ-3",
+    "REQ-4",
+    "REQ-5"
+  ],
+  "mapping": [
+    {
+      "source": "AlphaTable.read_csv",
+      "target": "BetaDataset.from_csv",
+      "status": "automatic",
+      "note": "Equivalent CSV load concept."
+    },
+    {
+      "source": "AlphaReport.write_json",
+      "target": "BetaReport.write_json",
+      "status": "automatic",
+      "note": "Equivalent JSON report writer."
+    },
+    {
+      "source": "implicit schema assumptions",
+      "target": "BetaRuntime.validate_schema",
+      "status": "required_improvement",
+      "note": "Beta requires explicit schema validation."
+    },
+    {
+      "source": "AlphaLogger.info",
+      "target": "not used in minimal demo",
+      "status": "manual_review",
+      "note": "Logging policy is team-specific."
+    }
+  ],
+  "human_review_rules": [
+    "Confirm threshold semantics before production use.",
+    "Confirm Beta SDK error-handling convention.",
+    "Review generated adapter before adding real platform SDK imports."
+  ]
+}

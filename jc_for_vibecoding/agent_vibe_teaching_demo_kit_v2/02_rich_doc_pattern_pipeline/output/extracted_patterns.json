@@ -1,0 +1,25 @@
+{
+  "patterns": [
+    {
+      "pattern_id": "RESET_STABILITY",
+      "objective": "Verify that reset deassertion leads to ready within the allowed window.",
+      "native_instruction": "DRIVE RESET LOW 5ns; DRIVE RESET HIGH; EXPECT READY WITHIN 20 CYCLES",
+      "expected_result": "ready == 1 within 20 cycles after reset release",
+      "human_review": "Confirm reset deassertion timing with the design owner."
+    },
+    {
+      "pattern_id": "BURST_WRITE_ACK",
+      "objective": "Verify that four consecutive writes receive acknowledgements.",
+      "native_instruction": "LOOP 4 WRITE ADDR++ DATA++; EXPECT ACK EACH WRITE",
+      "expected_result": "ack == 1 for every write operation",
+      "human_review": "Confirm whether address wraparound is legal."
+    },
+    {
+      "pattern_id": "CLOCK_JITTER_TOLERANCE",
+      "objective": "Verify that the block remains stable when clock jitter is applied within environment limits.",
+      "native_instruction": "SET CLOCK_JITTER MAX_ALLOWED; RUN 100 CYCLES; EXPECT READY STABLE",
+      "expected_result": "ready remains stable during jitter run",
+      "human_review": "Confirm jitter distribution and measurement method."
+    }
+  ]
+}

@@ -1,0 +1,5 @@
+timestamp,component,severity,message
+2026-05-01T10:00:00, api ,1,startup
+2026-05-01T10:02:00,worker,3,retry limit hit
+2026-05-01T10:03:00,api,2,slow response
+2026-05-01T10:04:00,scheduler ,4,missed heartbeat

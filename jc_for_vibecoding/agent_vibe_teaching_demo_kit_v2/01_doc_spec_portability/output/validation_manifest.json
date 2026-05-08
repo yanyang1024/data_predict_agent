@@ -1,0 +1,10 @@
+{
+  "ok": true,
+  "errors": [],
+  "validated": [
+    "syntax",
+    "sample_behavior",
+    "traceability_manifest"
+  ],
+  "logic_validated_for_real_platform": false
+}

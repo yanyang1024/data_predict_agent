@@ -1,0 +1,9 @@
+{
+  "ok": true,
+  "errors": [],
+  "checks": [
+    "required_sections",
+    "forbidden_phrases",
+    "manifest_human_review"
+  ]
+}

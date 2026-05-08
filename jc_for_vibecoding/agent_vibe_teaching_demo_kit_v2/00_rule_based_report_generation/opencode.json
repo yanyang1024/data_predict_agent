@@ -1,0 +1,30 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "permission": {
+    "*": "ask",
+    "read": {
+      "*": "allow"
+    },
+    "edit": {
+      "*": "ask",
+      "output/**": "allow",
+      "inputs/**": "deny"
+    },
+    "bash": {
+      "*": "ask",
+      "python3 scripts/generate_project_report.py": "allow",
+      "python3 scripts/validate_project_report.py": "allow"
+    },
+    "skill": {
+      "rule-based-project-report": "allow"
+    }
+  },
+  "agent": {
+    "plan": {
+      "permission": {
+        "edit": "deny",
+        "bash": "ask"
+      }
+    }
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "env_name": "portable_protocol_env",
+  "target_language": "python-dsl",
+  "signals": {
+    "reset": "rst_n",
+    "ready": "ready",
+    "ack": "ack",
+    "clock": "clk",
+    "data": "data_bus",
+    "addr": "addr_bus"
+  },
+  "supported_ops": [
+    "drive",
+    "expect",
+    "wait_time",
+    "wait_cycles",
+    "loop",
+    "write_bus",
+    "set_jitter"
+  ],
+  "limits": {
+    "max_jitter_ns": 0.25,
+    "max_burst_len": 8
+  },
+  "human_review_required_for": [
+    "timing_semantics",
+    "address_wraparound",
+    "jitter_distribution"
+  ]
+}

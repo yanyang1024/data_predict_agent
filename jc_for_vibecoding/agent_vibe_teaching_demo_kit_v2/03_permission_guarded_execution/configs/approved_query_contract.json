@@ -1,0 +1,25 @@
+{
+  "schema_version": "guarded-query-v1",
+  "allowed_assets": [
+    "PILOT_A",
+    "PILOT_B"
+  ],
+  "allowed_fields": [
+    "timestamp",
+    "asset",
+    "metric",
+    "value",
+    "unit"
+  ],
+  "max_window_days": 14,
+  "max_rows": 100,
+  "allowed_config_change_keys": [
+    "threshold.warning",
+    "threshold.critical"
+  ],
+  "forbidden_actions": [
+    "direct protected config edit",
+    "direct database connection",
+    "unbounded query"
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "required_sections": [
+    "Executive summary",
+    "Progress by workstream",
+    "Risks and blockers",
+    "Next steps",
+    "Human review checklist"
+  ],
+  "tone": "concise, factual, evidence-based",
+  "slide_count_target": 5,
+  "forbidden_phrases": [
+    "guaranteed",
+    "fully automated without review",
+    "production-ready without review"
+  ],
+  "must_include": [
+    "source status data",
+    "evidence",
+    "risk",
+    "human review"
+  ],
+  "human_review_questions": [
+    "Does the report reflect only the provided status data?",
+    "Are risks stated without overstating certainty?",
+    "Are decision requests explicit?"
+  ]
+}

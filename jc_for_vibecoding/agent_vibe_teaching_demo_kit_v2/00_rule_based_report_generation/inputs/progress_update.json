@@ -1,0 +1,70 @@
+{
+  "project_name": "Agentic Workflow Teaching Pilot",
+  "report_date": "2026-05-08",
+  "owner": "Training Enablement Team",
+  "period": "Week 3",
+  "summary": "The pilot converted four representative workflows into small runnable teaching demos. The current focus is validation, reviewer checkpoints, and safe execution boundaries.",
+  "workstreams": [
+    {
+      "name": "Demo 0 report workflow",
+      "status": "done",
+      "progress": 100,
+      "evidence": [
+        "Markdown report generator implemented",
+        "PPTX output generated",
+        "Validator checks required sections"
+      ],
+      "next": "Use as opening exercise",
+      "risk": "low"
+    },
+    {
+      "name": "Demo 1 spec portability",
+      "status": "done",
+      "progress": 95,
+      "evidence": [
+        "Platform docs and examples created",
+        "Mapping table generated",
+        "Generated implementation passes sample test"
+      ],
+      "next": "Ask learners to add one new requirement",
+      "risk": "medium"
+    },
+    {
+      "name": "Demo 2 rich document pipeline",
+      "status": "in review",
+      "progress": 85,
+      "evidence": [
+        "HTML and PDF-like source created",
+        "Extraction, adaptation, generation, syntax validation pipeline works"
+      ],
+      "next": "Have domain reviewer inspect generated sequence logic",
+      "risk": "medium"
+    },
+    {
+      "name": "Demo 3 permission guardrails",
+      "status": "done",
+      "progress": 90,
+      "evidence": [
+        "Guarded query wrapper created",
+        "Config change request flow created",
+        "Protected config hash validator added"
+      ],
+      "next": "Discuss how to map this to real data APIs",
+      "risk": "medium"
+    }
+  ],
+  "blockers": [
+    "Need instructor review of the exact classroom timing.",
+    "Need sanitized real examples before company-specific rollout."
+  ],
+  "decisions_needed": [
+    "Confirm whether workshop should use Cline, OpenCode, or both for live demo.",
+    "Decide which demo will be the hands-on exercise."
+  ],
+  "metrics": {
+    "demo_count": 4,
+    "scripts_validated": 9,
+    "skills_included": 4,
+    "commands_included": 4
+  }
+}

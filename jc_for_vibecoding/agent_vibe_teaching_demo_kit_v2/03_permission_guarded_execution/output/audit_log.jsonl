@@ -1,0 +1,4 @@
+{"asset": "PILOT_A", "event": "guarded_query_ok", "fields": ["timestamp", "asset", "metric", "value"], "row_count": 3}
+{"config_key": "threshold.warning", "event": "config_change_request_created"}
+{"asset": "PILOT_A", "event": "guarded_query_ok", "fields": ["timestamp", "asset", "metric", "value"], "row_count": 3}
+{"config_key": "threshold.warning", "event": "config_change_request_created"}

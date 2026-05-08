@@ -1,0 +1,19 @@
+{
+  "generated_at": "2026-05-08T12:52:45.344819Z",
+  "source": "docs/verification_guide.html",
+  "record_count": 3,
+  "fields_required": [
+    "PATTERN_ID",
+    "OBJECTIVE",
+    "NATIVE",
+    "EXPECTED",
+    "HUMAN_REVIEW"
+  ],
+  "do_not_infer": [
+    "voltage levels",
+    "coverage completeness",
+    "signoff readiness"
+  ],
+  "human_review_required": true,
+  "human_checkpoint": "Review extracted pattern list against source document."
+}

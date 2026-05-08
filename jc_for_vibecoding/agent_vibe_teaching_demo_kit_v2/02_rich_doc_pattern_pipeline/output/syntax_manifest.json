@@ -1,0 +1,17 @@
+{
+  "ok": true,
+  "errors": [],
+  "validated_by_tool": [
+    "python_syntax",
+    "supported_operation_names",
+    "dry_run_runtime_no_exception"
+  ],
+  "not_validated_by_tool": [
+    "spec_logic_correctness",
+    "coverage_completeness",
+    "timing_semantics"
+  ],
+  "logic_validated": false,
+  "human_review_required": true,
+  "dry_run_event_count": 20
+}

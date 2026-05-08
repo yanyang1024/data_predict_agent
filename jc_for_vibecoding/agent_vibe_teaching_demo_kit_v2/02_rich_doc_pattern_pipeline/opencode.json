@@ -1,0 +1,34 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "permission": {
+    "*": "ask",
+    "read": {
+      "*": "allow"
+    },
+    "edit": {
+      "*": "ask",
+      "output/**": "allow",
+      "docs/**": "ask",
+      "env_package/**": "deny"
+    },
+    "bash": {
+      "*": "ask",
+      "python3 scripts/run_pipeline.py*": "allow",
+      "python3 scripts/01_extract_patterns.py*": "allow",
+      "python3 scripts/02_adapt_patterns.py*": "allow",
+      "python3 scripts/03_generate_code.py*": "allow",
+      "python3 scripts/04_validate_syntax.py*": "allow"
+    },
+    "skill": {
+      "rich-doc-verification-pipeline": "allow"
+    }
+  },
+  "agent": {
+    "plan": {
+      "permission": {
+        "edit": "deny",
+        "bash": "ask"
+      }
+    }
+  }
+}

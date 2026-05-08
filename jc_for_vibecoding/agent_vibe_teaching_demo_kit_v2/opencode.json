@@ -1,0 +1,42 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "permission": {
+    "*": "ask",
+    "read": {
+      "*": "allow",
+      "**/.env": "deny",
+      "**/.env.*": "deny",
+      "**/protected/**": "deny"
+    },
+    "edit": {
+      "*": "ask",
+      "**/protected/**": "deny",
+      "**/inputs/**": "ask",
+      "**/docs/**": "ask",
+      "**/output/**": "allow"
+    },
+    "bash": {
+      "*": "ask",
+      "python3 run_all_demos.py": "ask",
+      "python3 scripts/*": "allow",
+      "rm *": "deny",
+      "curl *": "deny"
+    },
+    "skill": {
+      "*": "ask",
+      "rule-based-*": "allow",
+      "doc-spec-*": "allow",
+      "rich-doc-*": "allow",
+      "permission-*": "allow",
+      "production-*": "deny"
+    }
+  },
+  "agent": {
+    "plan": {
+      "permission": {
+        "edit": "deny",
+        "bash": "ask"
+      }
+    }
+  }
+}

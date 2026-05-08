@@ -1,0 +1,18 @@
+{
+  "generated_at": "2026-05-08T12:52:44.704981Z",
+  "requirements": [
+    "REQ-1",
+    "REQ-2",
+    "REQ-3",
+    "REQ-4",
+    "REQ-5"
+  ],
+  "implementation": "output/beta_event_monitor.py",
+  "mapping_table": "output/mapping_table.md",
+  "human_review_required": true,
+  "human_review_rules": [
+    "Confirm threshold semantics before production use.",
+    "Confirm Beta SDK error-handling convention.",
+    "Review generated adapter before adding real platform SDK imports."
+  ]
+}

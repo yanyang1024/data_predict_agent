@@ -1,0 +1,11 @@
+{
+  "ok": true,
+  "errors": [],
+  "checks": [
+    "protected_config_hash",
+    "query_manifest",
+    "change_request_status",
+    "audit_log"
+  ],
+  "human_review_required_for_config_change": true
+}

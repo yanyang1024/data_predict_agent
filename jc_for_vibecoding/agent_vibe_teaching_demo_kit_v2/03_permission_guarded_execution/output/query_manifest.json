@@ -1,0 +1,16 @@
+{
+  "status": "ok",
+  "asset": "PILOT_A",
+  "start_date": "2026-04-01",
+  "end_date": "2026-04-07",
+  "fields": [
+    "timestamp",
+    "asset",
+    "metric",
+    "value"
+  ],
+  "row_count": 3,
+  "contract": "configs/approved_query_contract.json",
+  "output": "output/query_result.csv",
+  "direct_database_access": false
+}

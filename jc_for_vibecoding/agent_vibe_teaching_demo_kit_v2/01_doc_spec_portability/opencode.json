@@ -1,0 +1,31 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "permission": {
+    "*": "ask",
+    "read": {
+      "*": "allow"
+    },
+    "edit": {
+      "*": "ask",
+      "output/**": "allow",
+      "docs/**": "ask",
+      "examples/**": "deny"
+    },
+    "bash": {
+      "*": "ask",
+      "python3 scripts/build_portable_impl.py": "allow",
+      "python3 scripts/validate_portable_impl.py": "allow"
+    },
+    "skill": {
+      "doc-spec-portability": "allow"
+    }
+  },
+  "agent": {
+    "plan": {
+      "permission": {
+        "edit": "deny",
+        "bash": "ask"
+      }
+    }
+  }
+}
