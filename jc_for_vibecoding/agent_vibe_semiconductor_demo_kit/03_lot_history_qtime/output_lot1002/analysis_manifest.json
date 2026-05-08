@@ -1,0 +1,12 @@
+{
+  "lot_id": "LOT1002",
+  "input": "mock_data/lot_history_sample.csv",
+  "summary": "output_lot1002/qtime_summary.csv",
+  "row_count": 4,
+  "time_range": {
+    "min_move_in": "2026-05-01T09:00:00",
+    "max_move_out": "2026-05-01T14:40:00"
+  },
+  "warnings": [],
+  "stop_rule_note": "This report is for engineering observation only; no lot disposition decision is made."
+}

@@ -1,0 +1,29 @@
+coverage_points:
+  - id: cov_reset_min_2_edges
+    feature: reset
+    bins:
+      - reset_low_2_edges
+  - id: cov_write_burst_len
+    feature: write
+    bins:
+      - bl4
+      - bl8
+  - id: cov_read_after_write_tw2r
+    feature: timing
+    bins:
+      - tw2r_2_cycles
+  - id: cov_vdd_corner
+    feature: voltage
+    bins:
+      - low_1080mv
+      - nom_1200mv
+      - high_1320mv
+  - id: cov_clock_jitter
+    feature: clock
+    bins:
+      - jitter_minus_5pct
+      - jitter_plus_5pct
+  - id: cov_illegal_we_re_low
+    feature: illegal_command
+    bins:
+      - we0_re0_no_corrupt

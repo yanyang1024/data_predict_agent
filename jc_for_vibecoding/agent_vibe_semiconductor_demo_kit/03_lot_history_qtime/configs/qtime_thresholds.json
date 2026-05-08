@@ -1,0 +1,9 @@
+{
+  "default_qtime_hours": 2.0,
+  "step_pair_threshold_hours": {
+    "PHOTO->ETCH": 2.0,
+    "ETCH->ASH": 1.5,
+    "ASH->METRO": 3.0,
+    "METRO->IMPLANT": 2.0
+  }
+}

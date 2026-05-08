@@ -1,0 +1,54 @@
+{
+  "api_map": {
+    "a_load_pattern": {
+      "status": "auto",
+      "b_expr": "b.loadPattern({args})",
+      "manual_source": "B manual: b.loadPattern(path)"
+    },
+    "a_set_voltage": {
+      "status": "needs_review",
+      "b_expr": "b.power.setRail({args})",
+      "manual_source": "B manual: b.power.setRail(rail, volts)",
+      "review_reason": "Product owner must confirm voltage and limit semantics."
+    },
+    "a_set_timing": {
+      "status": "auto",
+      "b_expr": "b.timing.setPeriod({args})",
+      "manual_source": "B manual: b.timing.setPeriod(clock, period_ns)"
+    },
+    "a_force_pin": {
+      "status": "auto",
+      "b_expr": "b.pin.force({args})",
+      "manual_source": "B manual: b.pin.force(pin, value)"
+    },
+    "a_wait_us": {
+      "status": "transform",
+      "b_expr": "b.wait.ns({arg0} * 1000)",
+      "manual_source": "B manual: b.wait.ns(value)",
+      "transform": "us_to_ns"
+    },
+    "a_run_pattern": {
+      "status": "transform",
+      "b_expr": "b.executePattern({args})",
+      "manual_source": "B manual: b.executePattern(label)",
+      "transform": "result_type_AResult_to_BRunResult"
+    },
+    "a_log_value": {
+      "status": "transform",
+      "b_expr": "b.datalog.scalar({args})",
+      "manual_source": "B manual: b.datalog.scalar(name, value)",
+      "transform": "result.pass_count_to_result.passed"
+    },
+    "a_enable_binning": {
+      "status": "unsupported",
+      "manual_source": "No direct B mapping in demo excerpt",
+      "review_reason": "Binning must be configured in platform B flow setup, not direct API."
+    }
+  },
+  "pattern_map": {
+    "PATTERN": "PROGRAM",
+    "TIMESET": "TIMING_SET",
+    "VECTOR": "CYCLE",
+    "ENDPATTERN": "ENDPROGRAM"
+  }
+}

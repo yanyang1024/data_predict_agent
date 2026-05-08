@@ -1,0 +1,20 @@
+# FineSim-style synthetic vector
+cycle sequence RESET_N CS_N WE_N RE_N ADDR WDATA EXP_RDATA VDD_MV
+0 reset_then_basic_write_read_bl4 0 0 1 1 0 0 0 1200
+1 reset_then_basic_write_read_bl4 0 0 1 1 0 0 0 1200
+2 reset_then_basic_write_read_bl4 1 1 1 1 0 0 0 1200
+3 reset_then_basic_write_read_bl4 1 0 0 1 16 165 0 1200
+4 reset_then_basic_write_read_bl4 1 1 1 1 0 0 0 1200
+5 reset_then_basic_write_read_bl4 1 1 1 1 0 0 0 1200
+6 reset_then_basic_write_read_bl4 1 0 1 0 16 0 165 1200
+7 voltage_sweep_write_bl8 1 1 1 1 0 0 0 1080
+8 voltage_sweep_write_bl8 1 0 0 1 32 90 0 1200
+9 voltage_sweep_write_bl8 1 1 1 1 0 0 0 1200
+10 voltage_sweep_write_bl8 1 0 0 1 33 91 0 1200
+11 voltage_sweep_write_bl8 1 1 1 1 0 0 0 1320
+12 voltage_sweep_write_bl8 1 0 0 1 34 92 0 1200
+13 illegal_command_no_corrupt 1 0 0 1 48 195 0 1200
+14 illegal_command_no_corrupt 1 0 0 0 48 0 0 1200
+15 illegal_command_no_corrupt 1 1 1 1 0 0 0 1200
+16 illegal_command_no_corrupt 1 1 1 1 0 0 0 1200
+17 illegal_command_no_corrupt 1 0 1 0 48 0 195 1200

@@ -1,0 +1,55 @@
+{
+  "signals": [
+    {
+      "name": "CLK",
+      "direction": "input",
+      "width": 1
+    },
+    {
+      "name": "RESET_N",
+      "direction": "input",
+      "width": 1
+    },
+    {
+      "name": "CS_N",
+      "direction": "input",
+      "width": 1
+    },
+    {
+      "name": "WE_N",
+      "direction": "input",
+      "width": 1
+    },
+    {
+      "name": "RE_N",
+      "direction": "input",
+      "width": 1
+    },
+    {
+      "name": "ADDR",
+      "direction": "input",
+      "width": 8
+    },
+    {
+      "name": "WDATA",
+      "direction": "input",
+      "width": 8
+    },
+    {
+      "name": "RDATA",
+      "direction": "output",
+      "width": 8
+    },
+    {
+      "name": "VDD_MV",
+      "direction": "input",
+      "width": 16
+    }
+  ],
+  "default_period_ns": 5.0,
+  "allowed_vdd_mv": [
+    1080,
+    1200,
+    1320
+  ]
+}

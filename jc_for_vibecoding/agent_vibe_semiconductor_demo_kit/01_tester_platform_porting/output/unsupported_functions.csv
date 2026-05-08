@@ -1,0 +1,2 @@
+source_function,reason,source_line
+a_enable_binning,"Binning must be configured in platform B flow setup, not direct API.","a_enable_binning(""engineering_debug"");"

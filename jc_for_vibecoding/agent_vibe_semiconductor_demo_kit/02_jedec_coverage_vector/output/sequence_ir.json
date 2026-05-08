@@ -1,0 +1,126 @@
+{
+  "source": "docs/synthetic_jedec_memory_excerpt.md",
+  "environment": "env_lib/memory_env.json",
+  "signals": [
+    "CLK",
+    "RESET_N",
+    "CS_N",
+    "WE_N",
+    "RE_N",
+    "ADDR",
+    "WDATA",
+    "RDATA",
+    "VDD_MV"
+  ],
+  "sequences": [
+    {
+      "name": "reset_then_basic_write_read_bl4",
+      "purpose": "Cover reset, write burst length 4, read after write with tW2R.",
+      "coverage": [
+        "cov_reset_min_2_edges",
+        "cov_write_burst_len",
+        "cov_read_after_write_tw2r"
+      ],
+      "steps": [
+        {
+          "op": "reset",
+          "cycles": 2
+        },
+        {
+          "op": "wait_ns",
+          "value": 5
+        },
+        {
+          "op": "write",
+          "addr": 16,
+          "data": 165,
+          "burst_len": 4
+        },
+        {
+          "op": "wait_cycles",
+          "value": 2
+        },
+        {
+          "op": "read_expect",
+          "addr": 16,
+          "data": 165,
+          "read_latency": "needs_designer_confirmation"
+        }
+      ]
+    },
+    {
+      "name": "voltage_sweep_write_bl8",
+      "purpose": "Cover low, nominal, and high voltage corners with burst length 8.",
+      "coverage": [
+        "cov_write_burst_len",
+        "cov_vdd_corner"
+      ],
+      "steps": [
+        {
+          "op": "set_vdd_mv",
+          "value": 1080
+        },
+        {
+          "op": "write",
+          "addr": 32,
+          "data": 90,
+          "burst_len": 8
+        },
+        {
+          "op": "set_vdd_mv",
+          "value": 1200
+        },
+        {
+          "op": "write",
+          "addr": 33,
+          "data": 91,
+          "burst_len": 8
+        },
+        {
+          "op": "set_vdd_mv",
+          "value": 1320
+        },
+        {
+          "op": "write",
+          "addr": 34,
+          "data": 92,
+          "burst_len": 8
+        }
+      ]
+    },
+    {
+      "name": "illegal_command_no_corrupt",
+      "purpose": "Cover illegal WE_N=0 and RE_N=0 condition and read back prior data.",
+      "coverage": [
+        "cov_illegal_we_re_low"
+      ],
+      "steps": [
+        {
+          "op": "write",
+          "addr": 48,
+          "data": 195,
+          "burst_len": 4
+        },
+        {
+          "op": "illegal_we_re_low",
+          "addr": 48
+        },
+        {
+          "op": "wait_cycles",
+          "value": 2
+        },
+        {
+          "op": "read_expect",
+          "addr": 48,
+          "data": 195,
+          "read_latency": "needs_designer_confirmation"
+        }
+      ]
+    }
+  ],
+  "human_review": [
+    "Read latency is not defined in the synthetic excerpt.",
+    "Voltage corner acceptance criteria require designer confirmation.",
+    "Clock jitter injection model is simplified."
+  ]
+}
