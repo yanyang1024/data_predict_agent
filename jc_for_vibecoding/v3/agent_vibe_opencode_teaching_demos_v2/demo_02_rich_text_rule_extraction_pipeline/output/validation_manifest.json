@@ -1,0 +1,17 @@
+{
+  "syntax_valid": true,
+  "dry_run_exit_code": 0,
+  "dry_run_stdout": "sequence syntax and dry run passed",
+  "dry_run_stderr": "",
+  "rules_checked": [
+    "RESET_STABILITY",
+    "VOLTAGE_SWEEP",
+    "JITTER_TOLERANCE"
+  ],
+  "logic_correctness_verified": false,
+  "human_review_required": [
+    "Human must confirm reset polarity",
+    "Human must confirm allowed voltage range",
+    "Human must confirm jitter model"
+  ]
+}

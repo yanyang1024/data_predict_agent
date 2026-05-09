@@ -1,0 +1,9 @@
+{
+  "created_at": "2026-05-09T03:56:23",
+  "parameter": "row_limit",
+  "proposed_value": "200",
+  "reason": "teaching demo wants a larger sample",
+  "direct_config_write": false,
+  "requires_owner_approval": true,
+  "target_config": "protected_data/production_config.yaml"
+}

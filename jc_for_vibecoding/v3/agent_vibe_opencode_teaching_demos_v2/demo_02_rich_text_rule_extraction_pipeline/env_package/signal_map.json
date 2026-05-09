@@ -1,0 +1,23 @@
+{
+  "environment_name": "tiny_validation_env",
+  "signals": {
+    "RESET_N": "rst_n",
+    "READY": "ready",
+    "PASS": "pass_flag",
+    "ERROR_COUNT": "error_count"
+  },
+  "parameters": {
+    "VDD": "supply_vdd",
+    "CLK_JITTER": "clock_jitter_ps"
+  },
+  "macros": {
+    "BASIC_OP": "basic_transaction"
+  },
+  "available_functions": [
+    "set_signal",
+    "wait_ns",
+    "check_equal",
+    "set_param",
+    "basic_transaction"
+  ]
+}

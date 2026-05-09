@@ -1,0 +1,25 @@
+{
+  "course_date": "2026-05-09",
+  "timebox_minutes": 60,
+  "current_minute": 7,
+  "current_stage": "Demo 00 正在进行",
+  "completed": [
+    "开场与目标",
+    "OpenCode 工作流概览"
+  ],
+  "active_demo": "demo_00",
+  "user_questions": [
+    "怎么保证 Agent 生成物稳定？",
+    "Skill 和 prompt 模板的区别是什么？"
+  ],
+  "risks": [
+    "后续 demo 需要控制节奏",
+    "PPT/Excel 输出需要人工确认表达"
+  ],
+  "owners": {
+    "demo_00": "讲师",
+    "demo_01": "讲师",
+    "demo_02": "讲师",
+    "demo_03": "讲师"
+  }
+}

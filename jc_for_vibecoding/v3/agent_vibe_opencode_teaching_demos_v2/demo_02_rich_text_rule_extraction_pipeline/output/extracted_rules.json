@@ -1,0 +1,28 @@
+{
+  "source": "source_docs/validation_manual.pdf",
+  "rules": [
+    {
+      "id": "RESET_STABILITY",
+      "intent": "Verify reset release stability",
+      "native_pattern": "SET RESET_N=0; WAIT 10ns; SET RESET_N=1; WAIT 20ns; CHECK READY==1",
+      "expected_evidence": "READY becomes 1 after reset release",
+      "review": "Human must confirm reset polarity"
+    },
+    {
+      "id": "VOLTAGE_SWEEP",
+      "intent": "Validate operation across voltage range",
+      "native_pattern": "FOR VDD IN [0.9, 1.0, 1.1]: SET VDD; RUN BASIC_OP; CHECK PASS==1",
+      "expected_evidence": "PASS remains 1",
+      "review": "Human must confirm allowed voltage range"
+    },
+    {
+      "id": "JITTER_TOLERANCE",
+      "intent": "Validate clock jitter tolerance",
+      "native_pattern": "SET CLK_JITTER=50ps; RUN BASIC_OP; CHECK ERROR_COUNT==0",
+      "expected_evidence": "ERROR_COUNT remains zero",
+      "review": "Human must confirm jitter model"
+    }
+  ],
+  "missing_rule_ids": [],
+  "human_review_required": true
+}

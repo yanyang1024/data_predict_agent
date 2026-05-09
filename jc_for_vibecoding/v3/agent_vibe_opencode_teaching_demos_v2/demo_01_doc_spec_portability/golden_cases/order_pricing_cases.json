@@ -1,0 +1,47 @@
+[
+  {
+    "name": "small standard order",
+    "order": {
+      "customer_tier": "standard",
+      "region": "CA",
+      "lines": [
+        {
+          "sku": "A",
+          "quantity": 2,
+          "unit_price": 50
+        }
+      ]
+    },
+    "expected_final_total": 133.0
+  },
+  {
+    "name": "bulk and member discount with free shipping",
+    "order": {
+      "customer_tier": "gold",
+      "region": "CA",
+      "lines": [
+        {
+          "sku": "B",
+          "quantity": 10,
+          "unit_price": 120
+        }
+      ]
+    },
+    "expected_final_total": 1101.6
+  },
+  {
+    "name": "tax exempt free shipping",
+    "order": {
+      "customer_tier": "standard",
+      "region": "OR",
+      "lines": [
+        {
+          "sku": "C",
+          "quantity": 5,
+          "unit_price": 120
+        }
+      ]
+    },
+    "expected_final_total": 600.0
+  }
+]

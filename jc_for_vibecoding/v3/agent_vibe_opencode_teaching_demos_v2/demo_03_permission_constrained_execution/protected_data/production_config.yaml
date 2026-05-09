@@ -1,0 +1,8 @@
+# Synthetic protected config. Do not let the agent edit this file directly.
+row_limit: 100
+window_days: 7
+field_whitelist:
+  - date
+  - step
+  - value
+  - owner

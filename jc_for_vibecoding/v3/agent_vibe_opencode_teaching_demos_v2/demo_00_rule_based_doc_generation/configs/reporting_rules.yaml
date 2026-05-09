@@ -1,0 +1,20 @@
+writing_rules:
+  tone: "正式但适合教学"
+  max_slide_bullets: 5
+  must_include:
+    - "当前进展"
+    - "总体时间规划"
+    - "用户问题"
+    - "人工 review 项"
+visual_rules:
+  dashboard:
+    show_kpi: true
+    show_gantt: true
+    show_questions: true
+  excel:
+    use_status_dropdown: true
+    include_manifest_sheet: true
+stop_rules:
+  - "缺少实际会议时间时，不要虚构；标记为待确认。"
+  - "不能把自动生成的 PPT 当作最终对外材料。"
+  - "用户问题语义不清时，写入 review checklist。"

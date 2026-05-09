@@ -1,0 +1,15 @@
+date,step,value,owner,status
+2026-04-26,ingest,91,Alice,ok
+2026-04-27,ingest,93,Alice,ok
+2026-04-28,transform,88,Bob,watch
+2026-04-29,transform,87,Bob,watch
+2026-04-30,validate,95,Carol,ok
+2026-05-01,validate,96,Carol,ok
+2026-05-02,report,90,Dan,ok
+2026-05-03,report,89,Dan,watch
+2026-05-04,ingest,92,Alice,ok
+2026-05-05,transform,86,Bob,watch
+2026-05-06,validate,97,Carol,ok
+2026-05-07,report,91,Dan,ok
+2026-05-08,ingest,94,Alice,ok
+2026-05-09,transform,88,Bob,watch

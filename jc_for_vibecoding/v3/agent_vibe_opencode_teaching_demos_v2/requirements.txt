@@ -1,0 +1,6 @@
+python-pptx
+openpyxl
+matplotlib
+pyyaml
+pypdf
+reportlab

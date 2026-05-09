@@ -1,0 +1,101 @@
+{
+  "environment": "tiny_validation_env",
+  "rules": [
+    {
+      "id": "RESET_STABILITY",
+      "intent": "Verify reset release stability",
+      "steps": [
+        {
+          "op": "set_signal",
+          "name": "rst_n",
+          "value": 0
+        },
+        {
+          "op": "wait_ns",
+          "value": 10
+        },
+        {
+          "op": "set_signal",
+          "name": "rst_n",
+          "value": 1
+        },
+        {
+          "op": "wait_ns",
+          "value": 20
+        },
+        {
+          "op": "check_equal",
+          "name": "ready",
+          "value": 1
+        }
+      ],
+      "review": "Human must confirm reset polarity"
+    },
+    {
+      "id": "VOLTAGE_SWEEP",
+      "intent": "Validate operation across voltage range",
+      "steps": [
+        {
+          "op": "set_param",
+          "name": "supply_vdd",
+          "value": 0.9
+        },
+        {
+          "op": "basic_transaction"
+        },
+        {
+          "op": "check_equal",
+          "name": "pass_flag",
+          "value": 1
+        },
+        {
+          "op": "set_param",
+          "name": "supply_vdd",
+          "value": 1.0
+        },
+        {
+          "op": "basic_transaction"
+        },
+        {
+          "op": "check_equal",
+          "name": "pass_flag",
+          "value": 1
+        },
+        {
+          "op": "set_param",
+          "name": "supply_vdd",
+          "value": 1.1
+        },
+        {
+          "op": "basic_transaction"
+        },
+        {
+          "op": "check_equal",
+          "name": "pass_flag",
+          "value": 1
+        }
+      ],
+      "review": "Human must confirm allowed voltage range"
+    },
+    {
+      "id": "JITTER_TOLERANCE",
+      "intent": "Validate clock jitter tolerance",
+      "steps": [
+        {
+          "op": "set_param",
+          "name": "clock_jitter_ps",
+          "value": 50
+        },
+        {
+          "op": "basic_transaction"
+        },
+        {
+          "op": "check_equal",
+          "name": "error_count",
+          "value": 0
+        }
+      ],
+      "review": "Human must confirm jitter model"
+    }
+  ]
+}

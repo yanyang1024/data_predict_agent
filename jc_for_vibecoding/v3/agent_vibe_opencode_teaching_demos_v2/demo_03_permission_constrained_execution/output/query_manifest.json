@@ -1,0 +1,15 @@
+{
+  "dataset": "training_metrics",
+  "source": "approved safe export",
+  "fields": [
+    "date",
+    "step",
+    "value",
+    "owner",
+    "status"
+  ],
+  "window_days": 14,
+  "row_count": 14,
+  "direct_protected_data_access": false,
+  "policy_file": "configs/policy.json"
+}

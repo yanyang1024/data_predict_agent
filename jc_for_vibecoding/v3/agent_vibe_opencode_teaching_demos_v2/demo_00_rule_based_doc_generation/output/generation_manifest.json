@@ -1,0 +1,20 @@
+{
+  "generated_at": "2026-05-09T03:55:53",
+  "request_chars": 99,
+  "outputs": [
+    "teaching_brief.md",
+    "teaching_progress_deck.pptx",
+    "teaching_dashboard.xlsx",
+    "teaching_gantt.png",
+    "dashboard.html"
+  ],
+  "human_review_required": true,
+  "review_reasons": [
+    "时间规划是否与实际会议一致？",
+    "当前进展是否准确？",
+    "用户问题是否需要在 Q&A 中展开？",
+    "输出内容是否适合直接对外分享？"
+  ],
+  "schedule_count": 5,
+  "current_stage": "Demo 00 正在进行"
+}

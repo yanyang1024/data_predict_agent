@@ -1,0 +1,12 @@
+{
+  "ok": true,
+  "generated": [
+    "output/platform_python/pricer.py",
+    "output/platform_node/pricer.mjs"
+  ],
+  "human_review_required": [
+    "Confirm negative quantity behavior.",
+    "Confirm whether discounts are additive or sequential.",
+    "Confirm whether bankers rounding matches downstream platforms."
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "allowed_datasets": {
+    "training_metrics": "safe_exports/training_metrics_sample.csv"
+  },
+  "allowed_fields": [
+    "date",
+    "step",
+    "value",
+    "owner",
+    "status"
+  ],
+  "max_window_days": 30,
+  "max_rows": 200,
+  "blocked_paths": [
+    "protected_data"
+  ],
+  "config_parameters_allowed_for_proposal": [
+    "row_limit",
+    "window_days",
+    "field_whitelist"
+  ]
+}

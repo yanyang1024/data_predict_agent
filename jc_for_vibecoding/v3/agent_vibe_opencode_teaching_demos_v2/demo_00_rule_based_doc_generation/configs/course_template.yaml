@@ -1,0 +1,44 @@
+course_title: "OpenCode Agent 与 Vibe Coding 教学演示"
+duration_minutes: 60
+presenter: "讲师"
+outputs:
+  pptx: true
+  xlsx: true
+  gantt_png: true
+  html_dashboard: true
+sections:
+  - id: demo_00
+    title: "Demo 00 基于规则的文档生成"
+    start_min: 0
+    end_min: 10
+    objective: "介绍 OpenCode 从 0 到 1 工作流"
+  - id: demo_01
+    title: "Demo 01 Doc Spec 可移植开发"
+    start_min: 10
+    end_min: 25
+    objective: "基于历史文档和样例抽取规范并生成多平台实现"
+  - id: demo_02
+    title: "Demo 02 富文本规则提取与 Skill 串联"
+    start_min: 25
+    end_min: 45
+    objective: "从 PDF/富文本提取规则、适配环境包并验证"
+  - id: demo_03
+    title: "Demo 03 权限约束执行"
+    start_min: 45
+    end_min: 57
+    objective: "用脚本和权限约束 Agent 操作空间"
+  - id: wrap_up
+    title: "总结与 Q&A"
+    start_min: 57
+    end_min: 60
+    objective: "总结 Prompt -> Skill -> Tool -> Permission"
+status_values:
+  - not_started
+  - in_progress
+  - done
+  - needs_review
+review_questions:
+  - "时间规划是否与实际会议一致？"
+  - "当前进展是否准确？"
+  - "用户问题是否需要在 Q&A 中展开？"
+  - "输出内容是否适合直接对外分享？"

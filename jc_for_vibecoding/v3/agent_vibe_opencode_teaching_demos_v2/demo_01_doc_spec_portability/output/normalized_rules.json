@@ -1,0 +1,38 @@
+{
+  "schema_version": "pricing-rules-v1",
+  "source_spec": "docs/order_pricing_spec.md",
+  "rules": {
+    "currency": "USD",
+    "rounding": "bankers_2_decimal",
+    "base_total": "sum(line.quantity * line.unit_price)",
+    "discounts": [
+      {
+        "id": "BULK10",
+        "when": "base_total >= 1000",
+        "percent": 10
+      },
+      {
+        "id": "MEMBER5",
+        "when": "customer_tier in [gold, platinum]",
+        "percent": 5
+      }
+    ],
+    "tax": {
+      "default_percent": 8,
+      "exempt_regions": [
+        "OR",
+        "MT",
+        "NH"
+      ]
+    },
+    "shipping": {
+      "free_when_total_after_discount_gte": 500,
+      "default_fee": 25
+    }
+  },
+  "human_review_required": [
+    "Confirm negative quantity behavior.",
+    "Confirm whether discounts are additive or sequential.",
+    "Confirm whether bankers rounding matches downstream platforms."
+  ]
+}
