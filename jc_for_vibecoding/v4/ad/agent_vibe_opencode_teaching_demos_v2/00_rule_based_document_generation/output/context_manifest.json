@@ -1,0 +1,22 @@
+{
+  "generated_at": "2026-05-09T06:15:37.453846Z",
+  "inputs": {
+    "status": "inputs/course_status.json",
+    "request": "inputs/one_sentence_request.txt"
+  },
+  "outputs": [
+    "course_update.pptx",
+    "course_dashboard.xlsx",
+    "gantt_dashboard.html",
+    "agent_summary.md"
+  ],
+  "validated_by_script": [
+    "file existence",
+    "basic field presence"
+  ],
+  "requires_human_review": [
+    "content accuracy",
+    "teaching timing",
+    "business wording"
+  ]
+}

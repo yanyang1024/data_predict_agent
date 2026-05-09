@@ -1,0 +1,64 @@
+{
+  "course_title": "OpenCode Agent 应用从 0 到 1：四个教学型 Demo",
+  "total_minutes": 60,
+  "current_phase": "Demo00 已完成，准备进入 Demo01",
+  "overall_progress_percent": 25,
+  "demos": [
+    {
+      "id": "Demo00",
+      "name": "规则化文档生成",
+      "minutes": "00-08",
+      "status": "已完成",
+      "progress": 100,
+      "key_message": "一句话输入经结构化后生成 PPT、Excel、Gantt"
+    },
+    {
+      "id": "Demo01",
+      "name": "Doc Spec 可移植开发",
+      "minutes": "08-23",
+      "status": "进行中",
+      "progress": 35,
+      "key_message": "历史文档和样例沉淀为跨平台实现上下文"
+    },
+    {
+      "id": "Demo02",
+      "name": "富文本抽取与测试适配",
+      "minutes": "23-40",
+      "status": "待讲解",
+      "progress": 10,
+      "key_message": "抽取规则、环境包和验证脚本组成链式 Skill"
+    },
+    {
+      "id": "Demo03",
+      "name": "权限约束与受控执行",
+      "minutes": "40-55",
+      "status": "待讲解",
+      "progress": 5,
+      "key_message": "重要数据和配置通过封装脚本/API 收窄执行空间"
+    },
+    {
+      "id": "Takeaway",
+      "name": "总结与问答",
+      "minutes": "55-60",
+      "status": "待讲解",
+      "progress": 0,
+      "key_message": "Prompt 只是入口，Context 才是可复用资产"
+    }
+  ],
+  "user_questions": [
+    "Skill 和 Prompt 模板有什么区别？",
+    "Tool、API、脚本分别放在哪里？",
+    "哪些内容应该写进 AGENTS.md，哪些应该放 references？",
+    "权限配置能不能防止 Agent 误操作？"
+  ],
+  "risks": [
+    "学员容易把 demo 理解成一次性 prompt，而不是上下文工程",
+    "PPT/Excel 内容的业务准确性仍需讲师确认",
+    "如果本机缺少 python-pptx，PPT 会降级生成 Markdown 摘要"
+  ],
+  "next_actions": [
+    "讲解 Demo01 的 spec contract 抽取",
+    "展示 Skill 目录结构",
+    "强调 validator 只能证明格式和语法，不证明业务逻辑"
+  ]
+}

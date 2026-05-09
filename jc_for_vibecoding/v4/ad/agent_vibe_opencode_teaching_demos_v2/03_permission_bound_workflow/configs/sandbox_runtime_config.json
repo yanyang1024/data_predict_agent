@@ -1,0 +1,5 @@
+{
+  "max_query_days": 14,
+  "default_team": "alpha",
+  "report_mode": "summary"
+}

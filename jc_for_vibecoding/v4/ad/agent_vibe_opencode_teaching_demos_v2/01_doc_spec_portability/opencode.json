@@ -1,0 +1,24 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "instructions": [
+    "AGENTS.md",
+    "README.md",
+    "contexts/*.md"
+  ],
+  "permission": {
+    "edit": "ask",
+    "bash": "ask",
+    "skill": {
+      "doc-spec-portability": "allow",
+      "*": "ask"
+    }
+  },
+  "agent": {
+    "plan": {
+      "permission": {
+        "edit": "deny",
+        "bash": "ask"
+      }
+    }
+  }
+}

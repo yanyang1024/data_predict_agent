@@ -1,0 +1,53 @@
+{
+  "name": "ticket_priority_spec",
+  "version": "1.0",
+  "entrypoint": "classify(ticket)",
+  "rule_order_is_significant": true,
+  "rules": [
+    {
+      "rule_id": "R1",
+      "condition": "outage == true",
+      "priority": "P0",
+      "route": "incident-war-room",
+      "sla_hours": 1,
+      "note": "中断优先级最高"
+    },
+    {
+      "rule_id": "R2",
+      "condition": "severity == high AND customer_tier == enterprise",
+      "priority": "P1",
+      "route": "senior-support",
+      "sla_hours": 4,
+      "note": "企业客户高严重度"
+    },
+    {
+      "rule_id": "R3",
+      "condition": "severity == high",
+      "priority": "P2",
+      "route": "support",
+      "sla_hours": 8,
+      "note": "一般高严重度"
+    },
+    {
+      "rule_id": "R4",
+      "condition": "age_hours >= 72",
+      "priority": "P2",
+      "route": "support",
+      "sla_hours": 8,
+      "note": "长时间未处理升级"
+    },
+    {
+      "rule_id": "R5",
+      "condition": "default",
+      "priority": "P3",
+      "route": "support",
+      "sla_hours": 24,
+      "note": "默认规则"
+    }
+  ],
+  "human_review_required": [
+    "severity 大小写归一化是否符合业务预期",
+    "多规则命中时采用第一条是否正确",
+    "age_hours 缺失时按 0 处理是否正确"
+  ]
+}

@@ -1,0 +1,35 @@
+<!doctype html><html lang='zh-CN'><head><meta charset='utf-8'>
+<title>课程 Gantt Dashboard</title>
+<style>
+body { font-family: Arial, 'Microsoft YaHei', sans-serif; margin: 32px; color:#172033; }
+table { border-collapse: collapse; width: 100%; } th, td { border:1px solid #d0d7de; padding:8px; } th { background:#f6f8fa; }
+.bar-bg { background:#eef2f7; height:22px; border-radius:11px; overflow:hidden; } .bar { background:#4f46e5; color:white; text-align:center; height:22px; line-height:22px; font-size:12px; }
+.card { padding:16px; background:#f8fafc; border:1px solid #e5e7eb; border-radius:10px; margin: 12px 0; }
+</style></head><body>
+<h1>OpenCode Agent 应用从 0 到 1：四个教学型 Demo</h1>
+<div class='card'>当前阶段：Demo00 已完成，准备进入 Demo01｜总体进度：25%｜总时长：60 分钟</div>
+<table><thead><tr><th>ID</th><th>Demo</th><th>时间</th><th>状态</th><th>进度</th></tr></thead><tbody>
+        <tr>
+          <td>Demo00</td><td>规则化文档生成</td><td>00-08</td><td>已完成</td>
+          <td><div class='bar-bg'><div class='bar' style='width:100%'>100%</div></div></td>
+        </tr>
+        <tr>
+          <td>Demo01</td><td>Doc Spec 可移植开发</td><td>08-23</td><td>进行中</td>
+          <td><div class='bar-bg'><div class='bar' style='width:35%'>35%</div></div></td>
+        </tr>
+        <tr>
+          <td>Demo02</td><td>富文本抽取与测试适配</td><td>23-40</td><td>待讲解</td>
+          <td><div class='bar-bg'><div class='bar' style='width:10%'>10%</div></div></td>
+        </tr>
+        <tr>
+          <td>Demo03</td><td>权限约束与受控执行</td><td>40-55</td><td>待讲解</td>
+          <td><div class='bar-bg'><div class='bar' style='width:5%'>5%</div></div></td>
+        </tr>
+        <tr>
+          <td>Takeaway</td><td>总结与问答</td><td>55-60</td><td>待讲解</td>
+          <td><div class='bar-bg'><div class='bar' style='width:2%'>2%</div></div></td>
+        </tr></tbody></table>
+<h2>用户问题</h2><ul><li>Skill 和 Prompt 模板有什么区别？</li><li>Tool、API、脚本分别放在哪里？</li><li>哪些内容应该写进 AGENTS.md，哪些应该放 references？</li><li>权限配置能不能防止 Agent 误操作？</li></ul>
+<h2>风险与人工确认</h2><ul><li>学员容易把 demo 理解成一次性 prompt，而不是上下文工程</li><li>PPT/Excel 内容的业务准确性仍需讲师确认</li><li>如果本机缺少 python-pptx，PPT 会降级生成 Markdown 摘要</li></ul>
+<p><strong>提示：</strong>此看板由脚本生成，课程内容准确性仍需讲师确认。</p>
+</body></html>

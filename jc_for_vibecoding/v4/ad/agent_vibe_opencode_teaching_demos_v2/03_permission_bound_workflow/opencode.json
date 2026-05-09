@@ -1,0 +1,25 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "instructions": [
+    "AGENTS.md",
+    "README.md"
+  ],
+  "permission": {
+    "edit": "ask",
+    "bash": "ask",
+    "webfetch": "deny",
+    "skill": {
+      "permission-bound-data-workflow": "allow",
+      "production-*": "deny",
+      "*": "ask"
+    }
+  },
+  "agent": {
+    "plan": {
+      "permission": {
+        "edit": "deny",
+        "bash": "ask"
+      }
+    }
+  }
+}

@@ -1,0 +1,1 @@
+请基于当前 1 小时 OpenCode Agent 教学进度，生成讲师汇报用 PPT、Excel 进度看板和 Gantt HTML，突出四个 demo 的进度、用户问题、风险和下一步。

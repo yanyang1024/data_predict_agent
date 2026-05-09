@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="zh-CN">
+<head><meta charset="utf-8"><title>验证说明导出样例</title></head>
+<body>
+<h1>控制器验证说明 v0.3（富文本导出样例）</h1>
+<p>说明：本文件模拟从 PDF / Word / 网页导出的富文本。真实项目中应先转换为 Markdown 或 HTML，再按规则抽取。</p>
+
+<h2>验证模式表</h2>
+<table data-role="verification-pattern">
+<tr><th>pattern_id</th><th>intent</th><th>native_directive</th><th>expected</th><th>review_note</th></tr>
+<tr><td>RESET_STABILITY</td><td>复位后 ready 信号应在 3 个周期内拉高</td><td>legacy_reset(); wait_cycles(3); assert_ready()</td><td>ready == 1</td><td>ready 拉高的精确周期需要 owner 确认</td></tr>
+<tr><td>WRITE_READ_BACK</td><td>写寄存器后可以读回相同值</td><td>write_reg(0x10, 0xA5); read_reg(0x10); assert_eq(0xA5)</td><td>read_data == 0xA5</td><td>地址 0x10 是否适用于所有配置需要确认</td></tr>
+<tr><td>JITTER_TOLERANCE</td><td>注入时钟抖动后状态机不应进入 error</td><td>inject_clock_jitter(50); wait_cycles(5); assert_no_error()</td><td>error == 0</td><td>50 ppm 阈值来自示例，不代表最终规格</td></tr>
+</table>
+
+<h2>原生指令备注</h2>
+<pre data-role="native-directive">
+legacy_reset: old bench reset helper
+wait_cycles: old bench cycle wait helper
+write_reg/read_reg: old register access helpers
+inject_clock_jitter: old clock perturbation helper
+</pre>
+</body></html>

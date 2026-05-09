@@ -1,0 +1,32 @@
+{
+  "source_doc": "docs/rich_test_spec_export.html",
+  "extraction_rules": "references/extraction_rules.md",
+  "patterns": [
+    {
+      "pattern_id": "RESET_STABILITY",
+      "intent": "复位后 ready 信号应在 3 个周期内拉高",
+      "native_directive": "legacy_reset(); wait_cycles(3); assert_ready()",
+      "expected": "ready == 1",
+      "review_note": "ready 拉高的精确周期需要 owner 确认"
+    },
+    {
+      "pattern_id": "WRITE_READ_BACK",
+      "intent": "写寄存器后可以读回相同值",
+      "native_directive": "write_reg(0x10, 0xA5); read_reg(0x10); assert_eq(0xA5)",
+      "expected": "read_data == 0xA5",
+      "review_note": "地址 0x10 是否适用于所有配置需要确认"
+    },
+    {
+      "pattern_id": "JITTER_TOLERANCE",
+      "intent": "注入时钟抖动后状态机不应进入 error",
+      "native_directive": "inject_clock_jitter(50); wait_cycles(5); assert_no_error()",
+      "expected": "error == 0",
+      "review_note": "50 ppm 阈值来自示例，不代表最终规格"
+    }
+  ],
+  "human_review_required": [
+    "ready 拉高的精确周期需要 owner 确认",
+    "地址 0x10 是否适用于所有配置需要确认",
+    "50 ppm 阈值来自示例，不代表最终规格"
+  ]
+}

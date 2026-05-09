@@ -1,0 +1,5 @@
+{
+  "note": "mock sample only - do not read or edit in the demo workflow",
+  "production_database": "REDACTED",
+  "secret_token": "REDACTED"
+}

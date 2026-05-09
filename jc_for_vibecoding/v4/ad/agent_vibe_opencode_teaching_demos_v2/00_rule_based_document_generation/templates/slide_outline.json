@@ -1,0 +1,28 @@
+{
+  "slides": [
+    {
+      "title": "课程进度总览",
+      "type": "title"
+    },
+    {
+      "title": "1 小时时间规划",
+      "type": "timeline"
+    },
+    {
+      "title": "四个 Demo 当前进展",
+      "type": "progress"
+    },
+    {
+      "title": "用户问题与风险",
+      "type": "questions"
+    },
+    {
+      "title": "上下文沉淀结构",
+      "type": "context"
+    },
+    {
+      "title": "下一步行动",
+      "type": "actions"
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "row_count": 7,
+  "metric": "latency_ms",
+  "team": "alpha",
+  "min": 120.0,
+  "max": 160.0,
+  "mean": 141.4286,
+  "validated_by_script": [
+    "csv parsed",
+    "numeric aggregation"
+  ],
+  "requires_human_review": [
+    "business interpretation",
+    "production action",
+    "threshold appropriateness"
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "allowed_metrics": [
+    "latency_ms",
+    "error_rate"
+  ],
+  "allowed_teams": [
+    "alpha",
+    "beta"
+  ],
+  "max_query_days": 14,
+  "row_limit": 1000
+}

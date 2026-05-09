@@ -1,0 +1,69 @@
+[
+  {
+    "name": "outage wins",
+    "ticket": {
+      "outage": true,
+      "severity": "low",
+      "customer_tier": "standard",
+      "age_hours": 1
+    },
+    "expected": {
+      "priority": "P0",
+      "route": "incident-war-room",
+      "sla_hours": 1
+    }
+  },
+  {
+    "name": "enterprise high",
+    "ticket": {
+      "outage": false,
+      "severity": "HIGH",
+      "customer_tier": "enterprise",
+      "age_hours": 2
+    },
+    "expected": {
+      "priority": "P1",
+      "route": "senior-support",
+      "sla_hours": 4
+    }
+  },
+  {
+    "name": "general high",
+    "ticket": {
+      "severity": "high",
+      "customer_tier": "standard",
+      "age_hours": 2
+    },
+    "expected": {
+      "priority": "P2",
+      "route": "support",
+      "sla_hours": 8
+    }
+  },
+  {
+    "name": "aging escalation",
+    "ticket": {
+      "severity": "medium",
+      "customer_tier": "standard",
+      "age_hours": 80
+    },
+    "expected": {
+      "priority": "P2",
+      "route": "support",
+      "sla_hours": 8
+    }
+  },
+  {
+    "name": "default",
+    "ticket": {
+      "severity": "low",
+      "customer_tier": "standard",
+      "age_hours": 5
+    },
+    "expected": {
+      "priority": "P3",
+      "route": "support",
+      "sla_hours": 24
+    }
+  }
+]
