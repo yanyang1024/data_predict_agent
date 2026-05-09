@@ -1,0 +1,13 @@
+{
+  "target": "sandbox",
+  "flag": "beta_dashboard",
+  "value": true,
+  "reason": "training demo",
+  "review_required": false,
+  "created_at": "2026-05-09T14:31:33.906773+00:00",
+  "guardrails": [
+    "sandbox_only",
+    "do_not_edit_protected",
+    "audit_required"
+  ]
+}

@@ -1,0 +1,35 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "permission": {
+    "read": "allow",
+    "edit": {
+      "*": "ask",
+      "papers/**": "deny",
+      "env_pkg/**": "deny",
+      "references/**": "deny",
+      "data/**": "deny",
+      "output/**": "allow",
+      "repro_project/**": "allow"
+    },
+    "bash": {
+      "*": "ask",
+      "python3 scripts/extract_pdf_evidence.py*": "allow",
+      "python3 scripts/build_repro_project.py*": "allow",
+      "python3 scripts/validate_repro_project.py*": "allow",
+      "python3 run_demo.py": "allow",
+      "rm *": "deny"
+    },
+    "skill": {
+      "paper-reproducer": "allow",
+      "*": "ask"
+    },
+    "external_directory": "deny"
+  },
+  "agent": {
+    "plan": {
+      "permission": {
+        "edit": "deny"
+      }
+    }
+  }
+}

@@ -1,0 +1,68 @@
+[
+  {
+    "name": "standard no coupon",
+    "order": {
+      "items": [
+        {
+          "sku": "A",
+          "qty": 2,
+          "unit_price": 10.0,
+          "category": "book"
+        }
+      ],
+      "customer_tier": "standard",
+      "coupon": null,
+      "tax_rate": 0.1
+    },
+    "expected": {
+      "subtotal": 20.0,
+      "discounted": 20.0,
+      "tax": 2.0,
+      "total": 22.0
+    }
+  },
+  {
+    "name": "gold welcome coupon",
+    "order": {
+      "items": [
+        {
+          "sku": "B",
+          "qty": 1,
+          "unit_price": 100.0,
+          "category": "device"
+        }
+      ],
+      "customer_tier": "gold",
+      "coupon": "WELCOME10",
+      "tax_rate": 0.0825
+    },
+    "expected": {
+      "subtotal": 100.0,
+      "discounted": 81.0,
+      "tax": 6.68,
+      "total": 87.68
+    }
+  },
+  {
+    "name": "silver bulk coupon applies",
+    "order": {
+      "items": [
+        {
+          "sku": "C",
+          "qty": 10,
+          "unit_price": 3.0,
+          "category": "part"
+        }
+      ],
+      "customer_tier": "silver",
+      "coupon": "BULK5",
+      "tax_rate": 0.05
+    },
+    "expected": {
+      "subtotal": 30.0,
+      "discounted": 27.08,
+      "tax": 1.35,
+      "total": 28.43
+    }
+  }
+]

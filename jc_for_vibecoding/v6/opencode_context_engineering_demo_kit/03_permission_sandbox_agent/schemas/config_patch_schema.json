@@ -1,0 +1,13 @@
+{
+  "required": [
+    "target",
+    "flag",
+    "value",
+    "reason",
+    "review_required"
+  ],
+  "target": "sandbox_only",
+  "value_types": [
+    "boolean"
+  ]
+}

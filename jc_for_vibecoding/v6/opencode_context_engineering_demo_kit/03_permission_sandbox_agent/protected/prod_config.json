@@ -1,0 +1,13 @@
+{
+  "environment": "production",
+  "flags": {
+    "beta_dashboard": false,
+    "advanced_export": false,
+    "unsafe_bulk_update": false
+  },
+  "limits": {
+    "max_rows": 5000,
+    "max_runtime_sec": 60
+  },
+  "owner": "platform-admin"
+}

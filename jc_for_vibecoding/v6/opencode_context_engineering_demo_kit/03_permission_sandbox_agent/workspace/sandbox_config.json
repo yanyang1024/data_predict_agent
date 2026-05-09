@@ -1,0 +1,13 @@
+{
+  "environment": "sandbox",
+  "flags": {
+    "beta_dashboard": false,
+    "advanced_export": false,
+    "unsafe_bulk_update": false
+  },
+  "limits": {
+    "max_rows": 1000,
+    "max_runtime_sec": 20
+  },
+  "owner": "training-sandbox"
+}

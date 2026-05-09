@@ -1,0 +1,19 @@
+{
+  "allowed_target": "sandbox",
+  "allowed_flags": {
+    "beta_dashboard": {
+      "type": "boolean",
+      "requires_reason": true
+    },
+    "advanced_export": {
+      "type": "boolean",
+      "requires_reason": true
+    }
+  },
+  "denied_flags": [
+    "unsafe_bulk_update"
+  ],
+  "review_required": [
+    "advanced_export"
+  ]
+}

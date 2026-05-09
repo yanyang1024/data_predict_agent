@@ -1,0 +1,37 @@
+{
+  "source": "fallback_text",
+  "objective": "Reproduce a small signal anomaly detector for educational agent workflows. The detector scans a single numeric signal and flags points whose normalized score exceeds a threshold.",
+  "environment_requirements": [
+    "`load_signal_csv(path)` returning a list of float values.",
+    "`mean(values)` and `std(values)`.",
+    "`write_json(path, payload)`."
+  ],
+  "algorithm_steps": [
+    "For each point at index i, use the previous `window` points as baseline. If fewer than `window` previous points exist, skip the point. Compute:",
+    "score = abs(x_i - mean(previous_window)) / max(std(previous_window), 1e-6)",
+    "Flag an anomaly when `score >= threshold`.",
+    "Default parameters:",
+    "- `window = 4`",
+    "- `threshold = 2.5`"
+  ],
+  "default_parameters": {
+    "window": 4,
+    "threshold": 2.5
+  },
+  "experiment_logic": [
+    "Run the detector on `data/sample_signal.csv`. The expected anomaly index for the included demo data is 8."
+  ],
+  "native_code_instructions": [
+    "`src/adaptive_window.py`",
+    "`tests/test_adaptive_window.py`",
+    "`README.md`"
+  ],
+  "limitations": [
+    "This paper excerpt is synthetic and only suitable for teaching PDF extraction and reproduction workflows. It does not prove real scientific correctness."
+  ],
+  "human_review_items": [
+    "确认 PDF 抽取是否遗漏公式上下文",
+    "确认样例 anomaly index 是否符合论文意图",
+    "确认算法是否适合真实数据"
+  ]
+}
