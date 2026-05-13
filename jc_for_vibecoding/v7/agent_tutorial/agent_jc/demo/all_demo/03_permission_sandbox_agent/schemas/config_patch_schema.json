@@ -1,0 +1,49 @@
+{
+  "type": "object",
+  "required": [
+    "proposal_id",
+    "requested_change",
+    "scope",
+    "operations",
+    "evidence",
+    "human_review"
+  ],
+  "properties": {
+    "proposal_id": {
+      "type": "string"
+    },
+    "requested_change": {
+      "type": "object",
+      "required": [
+        "flag",
+        "value",
+        "reason"
+      ]
+    },
+    "scope": {
+      "type": "object",
+      "required": [
+        "environment",
+        "target"
+      ]
+    },
+    "operations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "op",
+          "path",
+          "before",
+          "after"
+        ]
+      }
+    },
+    "evidence": {
+      "type": "object"
+    },
+    "human_review": {
+      "type": "array"
+    }
+  }
+}

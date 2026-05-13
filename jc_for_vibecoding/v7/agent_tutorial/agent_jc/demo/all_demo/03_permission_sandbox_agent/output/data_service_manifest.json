@@ -1,0 +1,39 @@
+{
+  "status": "passed",
+  "summary": "output/lot_history_summary.json",
+  "chart": "output/lot_qtime_chart.svg",
+  "audit_log": "output/audit_log.jsonl",
+  "checks": {
+    "schema_like": true,
+    "field_allowlist": true,
+    "lot_allowlist": true,
+    "audit_events": [
+      "lot_history_summary_generated",
+      "proposal_created",
+      "sandbox_output_written"
+    ]
+  },
+  "protected_files": {
+    "protected/prod_config.json": {
+      "expected_sha256": "7c0c22e86f75e2eb48a9082b1df4160e47116c9639ffa06b5bb0cb2e928f6744",
+      "actual_sha256": "7c0c22e86f75e2eb48a9082b1df4160e47116c9639ffa06b5bb0cb2e928f6744",
+      "unchanged": true
+    },
+    "protected/customer_data.csv": {
+      "expected_sha256": "d053f711388cc779a70bb720639d620d81c933ec470438f880ba9ea3c441f700",
+      "actual_sha256": "d053f711388cc779a70bb720639d620d81c933ec470438f880ba9ea3c441f700",
+      "unchanged": true
+    },
+    "protected/lot_history_raw.csv": {
+      "expected_sha256": "97930935df21d2ed40d1bdfdef6c12b7060d16bee41b217f81bd1425df93d948",
+      "actual_sha256": "97930935df21d2ed40d1bdfdef6c12b7060d16bee41b217f81bd1425df93d948",
+      "unchanged": true
+    }
+  },
+  "errors": [],
+  "human_review_required": [
+    "自动验证只证明数据服务返回字段受控，不证明真实业务口径正确。",
+    "QTime / UT 口径需要数据 owner 和工艺 owner 共同确认。",
+    "真实落地时应把脚本替换为带鉴权、审计和限流的 HTTP Data Service。"
+  ]
+}

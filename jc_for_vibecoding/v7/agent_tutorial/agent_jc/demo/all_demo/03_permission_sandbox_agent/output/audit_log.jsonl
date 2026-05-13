@@ -1,0 +1,3 @@
+{"event": "proposal_created", "flag": "beta_dashboard", "proposal_id": "proposal_001", "timestamp": "2026-05-13T20:56:11.953487+00:00", "value": true}
+{"event": "sandbox_output_written", "output": "output/sandbox_config_after.json", "proposal_id": "proposal_001", "timestamp": "2026-05-13T20:56:11.970618+00:00"}
+{"chart": "output/lot_qtime_chart.svg", "event": "lot_history_summary_generated", "lot_id": "LOT-A12", "output": "output/lot_history_summary.json", "timestamp": "2026-05-13T20:56:12.015476+00:00"}

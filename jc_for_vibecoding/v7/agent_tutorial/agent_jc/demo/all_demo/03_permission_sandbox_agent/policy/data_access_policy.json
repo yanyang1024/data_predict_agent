@@ -1,0 +1,33 @@
+{
+  "service_name": "lot_history_service",
+  "allowed_environment": "sandbox",
+  "source": "protected/lot_history_raw.csv",
+  "allowed_lots": [
+    "LOT-A12",
+    "LOT-B07",
+    "LOT-C19"
+  ],
+  "max_qtime_min": 60,
+  "allowed_output_fields": [
+    "lot_id",
+    "product",
+    "step_count",
+    "total_process_min",
+    "total_queue_min",
+    "max_queue_min",
+    "yield_status",
+    "utilization",
+    "qtime_risk_steps",
+    "chart"
+  ],
+  "denied_output_fields": [
+    "customer_id",
+    "operator",
+    "raw_rows",
+    "tool_owner"
+  ],
+  "required_outputs": [
+    "output/lot_history_summary.json",
+    "output/lot_qtime_chart.svg"
+  ]
+}

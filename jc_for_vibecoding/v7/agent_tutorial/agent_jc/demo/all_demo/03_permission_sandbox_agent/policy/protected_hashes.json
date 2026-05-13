@@ -1,0 +1,5 @@
+{
+  "protected/prod_config.json": "7c0c22e86f75e2eb48a9082b1df4160e47116c9639ffa06b5bb0cb2e928f6744",
+  "protected/customer_data.csv": "d053f711388cc779a70bb720639d620d81c933ec470438f880ba9ea3c441f700",
+  "protected/lot_history_raw.csv": "97930935df21d2ed40d1bdfdef6c12b7060d16bee41b217f81bd1425df93d948"
+}

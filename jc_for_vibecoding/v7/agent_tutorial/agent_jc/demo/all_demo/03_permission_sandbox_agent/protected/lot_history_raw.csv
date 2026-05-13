@@ -1,0 +1,11 @@
+lot_id,product,step,tool,start_min,end_min,result
+LOT-A12,DEMO-CHIP,wafer_sort,TST-01,0,38,pass
+LOT-A12,DEMO-CHIP,bake,OVN-02,54,174,pass
+LOT-A12,DEMO-CHIP,final_test,TST-03,230,286,pass
+LOT-A12,DEMO-CHIP,qa_hold,QA-01,320,350,pass
+LOT-B07,DEMO-CHIP,wafer_sort,TST-01,0,42,pass
+LOT-B07,DEMO-CHIP,bake,OVN-02,90,214,pass
+LOT-B07,DEMO-CHIP,final_test,TST-04,300,362,fail
+LOT-C19,POWER-IC,wafer_sort,TST-02,0,36,pass
+LOT-C19,POWER-IC,bake,OVN-01,45,160,pass
+LOT-C19,POWER-IC,final_test,TST-03,190,250,pass

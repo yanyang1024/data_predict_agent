@@ -1,0 +1,38 @@
+{
+  "status": "passed",
+  "proposal": "output/proposal_001.json",
+  "sandbox_after": "output/sandbox_config_after.json",
+  "audit_log": "output/audit_log.jsonl",
+  "protected_files": {
+    "protected/prod_config.json": {
+      "expected_sha256": "7c0c22e86f75e2eb48a9082b1df4160e47116c9639ffa06b5bb0cb2e928f6744",
+      "actual_sha256": "7c0c22e86f75e2eb48a9082b1df4160e47116c9639ffa06b5bb0cb2e928f6744",
+      "unchanged": true
+    },
+    "protected/customer_data.csv": {
+      "expected_sha256": "d053f711388cc779a70bb720639d620d81c933ec470438f880ba9ea3c441f700",
+      "actual_sha256": "d053f711388cc779a70bb720639d620d81c933ec470438f880ba9ea3c441f700",
+      "unchanged": true
+    },
+    "protected/lot_history_raw.csv": {
+      "expected_sha256": "97930935df21d2ed40d1bdfdef6c12b7060d16bee41b217f81bd1425df93d948",
+      "actual_sha256": "97930935df21d2ed40d1bdfdef6c12b7060d16bee41b217f81bd1425df93d948",
+      "unchanged": true
+    }
+  },
+  "checks": {
+    "proposal_schema_like": true,
+    "policy_allowlist": true,
+    "sandbox_only": true,
+    "audit_events": [
+      "proposal_created",
+      "sandbox_output_written"
+    ]
+  },
+  "errors": [],
+  "human_review_required": [
+    "自动验证未覆盖真实生产审批流程。",
+    "自动验证未证明业务风险评估充分。",
+    "protected 文件 hash 校验由受控脚本完成，Agent 不应直接读取敏感数据内容。"
+  ]
+}

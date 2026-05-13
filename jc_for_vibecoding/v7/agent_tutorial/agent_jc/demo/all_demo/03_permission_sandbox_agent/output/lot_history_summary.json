@@ -1,0 +1,12 @@
+{
+  "lot_id": "LOT-A12",
+  "product": "DEMO-CHIP",
+  "step_count": 4,
+  "total_process_min": 244,
+  "total_queue_min": 106,
+  "max_queue_min": 56,
+  "yield_status": "pass",
+  "utilization": 0.6971,
+  "qtime_risk_steps": [],
+  "chart": "output/lot_qtime_chart.svg"
+}

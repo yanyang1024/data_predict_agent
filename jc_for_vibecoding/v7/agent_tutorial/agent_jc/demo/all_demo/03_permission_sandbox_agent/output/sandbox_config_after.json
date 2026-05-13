@@ -1,0 +1,14 @@
+{
+  "environment": "sandbox",
+  "flags": {
+    "beta_dashboard": true,
+    "qtime_alerts": true,
+    "experimental_lot_view": false,
+    "export_customer_data": false
+  },
+  "limits": {
+    "max_query_rows": 100,
+    "export_pii": false
+  },
+  "owner": "training-demo"
+}

@@ -1,0 +1,3 @@
+customer_id,lot_id,product,hold_reason
+CUST-001,LOT-A12,DEMO-CHIP,none
+CUST-002,LOT-B07,DEMO-CHIP,qtime-review

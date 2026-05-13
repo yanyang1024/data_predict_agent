@@ -1,0 +1,34 @@
+{
+  "allowed_environment": "sandbox",
+  "denied_paths": [
+    "protected/prod_config.json",
+    "protected/customer_data.csv"
+  ],
+  "flags": {
+    "beta_dashboard": {
+      "type": "boolean",
+      "auto_apply": true,
+      "risk": "low",
+      "description": "教学用 dashboard beta 入口，只允许应用到 sandbox。"
+    },
+    "experimental_lot_view": {
+      "type": "boolean",
+      "auto_apply": false,
+      "risk": "medium",
+      "description": "涉及 lot history 查询展示，需要数据负责人审批。"
+    },
+    "export_customer_data": {
+      "type": "boolean",
+      "auto_apply": false,
+      "risk": "high",
+      "description": "涉及客户数据导出，不能由 Agent 自动开启。"
+    }
+  },
+  "required_reason_min_length": 4,
+  "required_outputs": [
+    "output/proposal_001.json",
+    "output/sandbox_config_after.json",
+    "output/audit_log.jsonl",
+    "output/validation_manifest.json"
+  ]
+}

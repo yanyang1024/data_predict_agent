@@ -1,0 +1,12 @@
+{
+  "validated_at": "2026-05-13T20:56:11.923371+00:00",
+  "project_dir": "repro_project",
+  "py_compile": true,
+  "unittest_stdout": "",
+  "unittest_stderr": "..\n----------------------------------------------------------------------\nRan 2 tests in 0.000s\n\nOK\n",
+  "removed_cache_entries": 2,
+  "limits": [
+    "syntax and sample tests only",
+    "logic correctness requires human review"
+  ]
+}

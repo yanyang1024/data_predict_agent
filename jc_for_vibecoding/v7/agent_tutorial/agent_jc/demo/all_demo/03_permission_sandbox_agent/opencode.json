@@ -1,0 +1,40 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "permission": {
+    "read": {
+      "*": "allow",
+      "protected/customer_data.csv": "deny",
+      "protected/lot_history_raw.csv": "deny"
+    },
+    "edit": {
+      "*": "ask",
+      "protected/**": "deny",
+      "policy/**": "deny",
+      "schemas/**": "deny",
+      "output/**": "allow",
+      "workspace/**": "allow"
+    },
+    "bash": {
+      "*": "ask",
+      "python3 scripts/propose_config_patch.py*": "allow",
+      "python3 scripts/apply_patch_to_sandbox.py*": "allow",
+      "python3 scripts/validate_config_patch.py*": "allow",
+      "python3 scripts/query_lot_history_service.py*": "allow",
+      "python3 scripts/validate_data_service.py*": "allow",
+      "python3 run_demo.py": "allow",
+      "rm *": "deny"
+    },
+    "skill": {
+      "guarded-change-workflow": "allow",
+      "*": "ask"
+    },
+    "external_directory": "deny"
+  },
+  "agent": {
+    "plan": {
+      "permission": {
+        "edit": "deny"
+      }
+    }
+  }
+}

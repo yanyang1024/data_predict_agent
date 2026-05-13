@@ -1,0 +1,21 @@
+已根据你提供的原始 Markdown 主线，整理成一份面向软件研发人员的 **OpenCode Coding Agent 教程初稿**：
+[下载 Markdown 初稿](sandbox:/mnt/data/opencode_coding_agent_tutorial.md)
+
+这版的写法沿用了你原文里“Agent 不是模型，而是带状态的决策循环”的核心叙事，然后把六个槽位映射到 OpenCode 的 `session`、`tool`、`permission`、`agent`、`snapshot`、`rules/AGENTS.md` 等模块上。 OpenCode 官方文档把它定位为开源 AI coding agent，并提供 TUI、桌面应用和 IDE 扩展等使用方式；官方入门流程也包括安装、`/connect` 配置 provider、在项目中运行 `/init` 生成 `AGENTS.md`，并建议把项目级 `AGENTS.md` 提交到 Git。([OpenCode][1])
+
+我在初稿里主要补了四块内容。第一块是 **技术演进主线**：从 ReAct 的“推理-行动-观察”闭环，到 Tool Calling 的结构化动作，再到 SWE-agent 的软件工程 ACI，最后落到 OpenCode 这种本地 coding agent runtime。第二块是 **OpenCode 模块实现视角**：`session/` 里有 `processor.ts`、`compaction.ts`、`revert.ts`、`summary.ts`、`todo.ts` 等会话运行时模块；`tool/` 里有 `shell/read/grep/glob/edit/write/task/skill/apply_patch/webfetch/websearch/lsp` 等工具实现；`permission/` 有权限评估相关模块；`agent/` 有 agent 定义和 subagent 权限相关文件。([GitHub][2])
+
+第三块是 **研发 SOP**，按“Git checkpoint → `/init`/AGENTS.md → Plan 只读规划 → Explore/Scout 查证 → Build 最小 patch → 测试验证 → 人工 review → commit”组织。OpenCode 官方文档里也推荐复杂功能先用 Plan 模式制定计划，再切回 Build 模式实施；同时 `/undo`、`/redo` 可以撤销/重做修改，但我在 SOP 中明确把它们定义为“辅助保险”，主保险仍然是 Git checkpoint。([OpenCode][1])
+
+第四块是 **坑位和治理方案**，包括你提到的 `pkill` 和无法回溯代码版本问题。公开 issue 中已有 `pkill -f` 在 TUI 中导致 bash tool call 挂起、在 CLI 中可能让 `opencode run` 自身终止的报告，因此我在模板里默认把 `pkill *`、`killall *` 设为 `deny`，并建议只在人类确认 PID 后从 OpenCode 外部终端执行 kill。([GitHub][3]) 公开 issue 中也有 snapshot stale hash、`index.lock` 残留、message revert 后文件未回滚等报告，所以初稿里建议每次大改前必须建分支或 worktree，并执行 `git add -A && git commit -m "checkpoint: before opencode <task>"` 或 `git stash push -u`，不要把 `/undo` 当唯一回滚机制。([GitHub][4])
+
+我还放入了一个偏保守的 `opencode.json` 权限模板。OpenCode 的 permission 支持 `allow`、`ask`、`deny` 三种动作，并支持按工具和模式做细粒度规则；官方文档还说明默认大多数权限偏宽松，`doom_loop` 和 `external_directory` 默认是 `ask`，`.env` 读取默认会被拒绝。([OpenCode][5]) 这也是为什么团队落地时，建议先从保守权限开始，再逐步放宽。
+
+另外，初稿里也专门写了后台进程和 LSP/子进程残留问题。公开 issue 中有用户报告 Ctrl-C 只中断 OpenCode 而子脚本继续运行，也有 LSP 进程在 OpenCode 关闭后残留并占用内存的报告；这类 issue 不一定代表所有版本都必现，但很适合作为教程中的风险教育案例。([GitHub][6])
+
+[1]: https://opencode.ai/docs/zh-cn "简介 | OpenCode"
+[2]: https://github.com/anomalyco/opencode/tree/dev/packages/opencode/src/session "opencode/packages/opencode/src/session at dev · anomalyco/opencode · GitHub"
+[3]: https://github.com/anomalyco/opencode/issues/25664 "pkill -f command causes tool call hang in opencode TUI · Issue #25664 · anomalyco/opencode · GitHub"
+[4]: https://github.com/anomalyco/opencode/issues/10589 "[BUG] [CRITICAL] Snapshot `.nothrow()` causes silent data loss — `/undo` and `/redo` revert files to stale content (Windows) · Issue #10589 · anomalyco/opencode · GitHub"
+[5]: https://opencode.ai/docs/permissions/ "Permissions | OpenCode"
+[6]: https://github.com/anomalyco/opencode/issues/3057 "Provide a way to stop all running scripts when OpenCode is interrupted · Issue #3057 · anomalyco/opencode · GitHub"

@@ -1,0 +1,12 @@
+{
+  "window": 4,
+  "threshold": 2.5,
+  "count": 1,
+  "anomalies": [
+    {
+      "index": 8,
+      "value": 30.0,
+      "score": 26.8701
+    }
+  ]
+}

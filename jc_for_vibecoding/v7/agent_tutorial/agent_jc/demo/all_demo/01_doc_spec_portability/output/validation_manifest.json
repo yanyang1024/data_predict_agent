@@ -1,0 +1,11 @@
+{
+  "module": "generated/pricing.mjs",
+  "cases": "tests/golden_cases.json",
+  "case_count": 5,
+  "node_stdout": "Golden cases passed: 5",
+  "validated": true,
+  "limits": [
+    "golden cases validate sample behavior only",
+    "business logic requires human review"
+  ]
+}

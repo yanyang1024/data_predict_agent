@@ -1,0 +1,47 @@
+{
+  "type": "object",
+  "required": [
+    "lot_id",
+    "product",
+    "step_count",
+    "total_process_min",
+    "total_queue_min",
+    "max_queue_min",
+    "yield_status",
+    "utilization",
+    "qtime_risk_steps",
+    "chart"
+  ],
+  "properties": {
+    "lot_id": {
+      "type": "string"
+    },
+    "product": {
+      "type": "string"
+    },
+    "step_count": {
+      "type": "integer"
+    },
+    "total_process_min": {
+      "type": "number"
+    },
+    "total_queue_min": {
+      "type": "number"
+    },
+    "max_queue_min": {
+      "type": "number"
+    },
+    "yield_status": {
+      "type": "string"
+    },
+    "utilization": {
+      "type": "number"
+    },
+    "qtime_risk_steps": {
+      "type": "array"
+    },
+    "chart": {
+      "type": "string"
+    }
+  }
+}
