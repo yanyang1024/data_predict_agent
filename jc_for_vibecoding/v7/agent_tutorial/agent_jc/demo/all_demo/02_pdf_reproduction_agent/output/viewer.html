@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Demo 02 PDF 证据抽取与复现 Agent</title>
+  <style>
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;margin:0;color:#202124;background:#f8fafc;line-height:1.55}
+header{background:#111827;color:white;padding:24px 32px}
+main{padding:24px 32px;max-width:1180px;margin:auto}
+h1{margin:0 0 8px;font-size:28px}
+h2{margin-top:28px}
+.summary{max-width:900px;color:#d1d5db}
+.links a{display:inline-block;margin-right:12px;color:white;font-weight:700}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin:18px 0}
+.cards article{background:white;border:1px solid #e5e7eb;border-radius:8px;padding:14px}
+.cards b,.cards span,.cards small{display:block}
+.cards span{font-size:22px;font-weight:700;margin:6px 0}
+.visual-panel{background:white;border:1px solid #e5e7eb;border-radius:8px;margin:20px 0;padding:16px}
+.visual-panel h2{margin:0 0 12px}
+.mini-viz{width:100%;height:auto;display:block;border:1px solid #eef2f7;border-radius:8px}
+.mini-viz-frame{width:100%;height:290px;border:1px solid #eef2f7;border-radius:8px;background:white}
+.mini-viz-frame.short{height:260px;margin-top:12px}
+.visual-chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.visual-chips span{background:#ecfeff;color:#155e75;border:1px solid #a5f3fc;border-radius:8px;padding:6px 9px;font-size:12px;font-weight:700}
+ol{background:white;border:1px solid #e5e7eb;border-radius:8px;padding:18px 18px 18px 42px}
+.artifacts{background:white;border:1px solid #e5e7eb;border-radius:8px;padding:8px 18px}
+.artifacts li{display:grid;grid-template-columns:minmax(140px,180px) minmax(120px,1fr) 80px;gap:12px;padding:8px 0;border-bottom:1px solid #f1f5f9}
+.artifacts li:last-child{border-bottom:0}
+code{font-family:"SFMono-Regular",Consolas,monospace;font-size:12px;color:#475569}
+.ready,.passed{color:#137333;font-weight:700}.missing{color:#a50e0e;font-weight:700}
+.preview{background:white;border:1px solid #e5e7eb;border-radius:8px;margin:16px 0;overflow:hidden}
+.preview h3{font-size:15px;margin:0;padding:10px 14px;background:#eef2ff;border-bottom:1px solid #e5e7eb}
+iframe{width:100%;height:520px;border:0;background:white}
+pre{margin:0;padding:14px;white-space:pre-wrap;overflow:auto;max-height:520px;font-size:13px;background:#0f172a;color:#e5e7eb}
+footer{padding:20px 32px;color:#64748b}
+</style>
+</head>
+<body>
+  <header>
+    <h1>Demo 02 PDF 证据抽取与复现 Agent</h1>
+    <p class="summary">PDF / fallback text -&gt; evidence.json -&gt; design brief -&gt; 最小复现项目 -&gt; unittest 验证。</p>
+    <p class="links"><a href="http://127.0.0.1:8762/">Viewer</a><a href="http://127.0.0.1:8762/output/design_brief.md">Primary artifact</a></p>
+  </header>
+  <main>
+    <h2>执行状态</h2>
+    <section class="cards"><article><b>Evidence source</b><span>fallback_text</span><small>PDF fallback allowed</small></article><article><b>Unittest</b><span>passed</span><small>syntax + sample tests</small></article></section>
+    <section class='visual-panel'><h2>可视化结果</h2>
+<svg viewBox='0 0 900 220' class='mini-viz' role='img' aria-label='paper reproduction flow'>
+  <rect width='900' height='220' fill='#ffffff'/>
+  <defs><marker id='arrow02' markerWidth='10' markerHeight='10' refX='8' refY='3' orient='auto'><path d='M0,0 L0,6 L9,3 z' fill='#64748b'/></marker></defs>
+  <g font-family='-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif'>
+    <rect x='36' y='58' width='170' height='92' rx='8' fill='#f8fafc' stroke='#d8dee9'/>
+    <text x='58' y='92' font-size='16' font-weight='700' fill='#1f2937'>PDF Text</text>
+    <text x='58' y='120' font-size='12' fill='#64748b'>fallback evidence</text>
+    <line x1='216' y1='104' x2='300' y2='104' stroke='#64748b' stroke-width='2' marker-end='url(#arrow02)'/>
+    <rect x='312' y='58' width='170' height='92' rx='8' fill='#f8fafc' stroke='#d8dee9'/>
+    <text x='334' y='92' font-size='16' font-weight='700' fill='#1f2937'>Evidence</text>
+    <text x='334' y='120' font-size='12' fill='#64748b'>window 4, threshold 2.5</text>
+    <line x1='492' y1='104' x2='576' y2='104' stroke='#64748b' stroke-width='2' marker-end='url(#arrow02)'/>
+    <rect x='588' y='58' width='170' height='92' rx='8' fill='#f8fafc' stroke='#d8dee9'/>
+    <text x='610' y='92' font-size='16' font-weight='700' fill='#1f2937'>Repro Project</text>
+    <text x='610' y='120' font-size='12' fill='#64748b'>unittest passed</text>
+    <rect x='318' y='176' width='264' height='24' rx='8' fill='#0f766e'/>
+    <text x='450' y='193' text-anchor='middle' font-size='12' font-weight='700' fill='#ffffff'>证据抽取 -> 代码生成 -> 样例验证</text>
+  </g>
+</svg>
+</section>
+    <h2>执行过程</h2>
+    <ol><li>调用 extract_pdf_evidence.py 抽取结构化证据</li><li>调用 build_repro_project.py 生成最小复现项目</li><li>调用 validate_repro_project.py 编译并运行样例测试</li><li>启动本地 viewer 服务，暴露 evidence、设计摘要、生成项目和验证结果</li></ol>
+    <h2>产物链接</h2>
+    <ul class="artifacts"><li><a href="/output/evidence.json">证据 JSON</a><code title="output/evidence.json">output/evidence.json</code><span class="ready">ready</span></li><li><a href="/output/design_brief.md">设计摘要</a><code title="output/design_brief.md">output/design_brief.md</code><span class="ready">ready</span></li><li><a href="/output/extract_manifest.json">抽取 manifest</a><code title="output/extract_manifest.json">output/extract_manifest.json</code><span class="ready">ready</span></li><li><a href="/output/validation_manifest.json">验证 manifest</a><code title="output/validation_manifest.json">output/validation_manifest.json</code><span class="ready">ready</span></li><li><a href="/repro_project/README.md">复现项目 README</a><code title="repro_project/README.md">repro_project/README.md</code><span class="ready">ready</span></li><li><a href="/repro_project/src/adaptive_window.py">生成代码</a><code title="repro_project/src/adaptive_window.py">src/adaptive_window.py</code><span class="ready">ready</span></li><li><a href="/output/service_manifest.json">服务 manifest</a><code title="output/service_manifest.json">output/service_manifest.json</code><span class="ready">ready</span></li></ul>
+    <h2>效果预览</h2>
+    <section class="preview"><h3>output/design_brief.md</h3><pre># Design Brief
+
+{
+  &quot;objective&quot;: &quot;Reproduce a small signal anomaly detector for educational agent workflows. The detector scans a single numeric signal and flags points whose normalized score exceeds a threshold.&quot;,
+  &quot;default_parameters&quot;: {
+    &quot;window&quot;: 4,
+    &quot;threshold&quot;: 2.5
+  },
+  &quot;generated_files&quot;: [
+    &quot;src/adaptive_window.py&quot;,
+    &quot;tests/test_adaptive_window.py&quot;,
+    &quot;chip_eval_env.py&quot;,
+    &quot;data/sample_signal.csv&quot;
+  ],
+  &quot;human_review_items&quot;: [
+    &quot;确认 PDF 抽取是否遗漏公式上下文&quot;,
+    &quot;确认样例 anomaly index 是否符合论文意图&quot;,
+    &quot;确认算法是否适合真实数据&quot;
+  ]
+}</pre></section><section class="preview"><h3>output/evidence.json</h3><pre>{
+  &quot;source&quot;: &quot;fallback_text&quot;,
+  &quot;objective&quot;: &quot;Reproduce a small signal anomaly detector for educational agent workflows. The detector scans a single numeric signal and flags points whose normalized score exceeds a threshold.&quot;,
+  &quot;environment_requirements&quot;: [
+    &quot;`load_signal_csv(path)` returning a list of float values.&quot;,
+    &quot;`mean(values)` and `std(values)`.&quot;,
+    &quot;`write_json(path, payload)`.&quot;
+  ],
+  &quot;algorithm_steps&quot;: [
+    &quot;For each point at index i, use the previous `window` points as baseline. If fewer than `window` previous points exist, skip the point. Compute:&quot;,
+    &quot;score = abs(x_i - mean(previous_window)) / max(std(previous_window), 1e-6)&quot;,
+    &quot;Flag an anomaly when `score &gt;= threshold`.&quot;,
+    &quot;Default parameters:&quot;,
+    &quot;- `window = 4`&quot;,
+    &quot;- `threshold = 2.5`&quot;
+  ],
+  &quot;default_parameters&quot;: {
+    &quot;window&quot;: 4,
+    &quot;threshold&quot;: 2.5
+  },
+  &quot;experiment_logic&quot;: [
+    &quot;Run the detector on `data/sample_signal.csv`. The expected anomaly index for the included demo data is 8.&quot;
+  ],
+  &quot;native_code_instructions&quot;: [
+    &quot;`src/adaptive_window.py`&quot;,
+    &quot;`tests/test_adaptive_window.py`&quot;,
+    &quot;`README.md`&quot;
+  ],
+  &quot;limitations&quot;: [
+    &quot;This paper excerpt is synthetic and only suitable for teaching PDF extraction and reproduction workflows. It does not prove real scientific correctness.&quot;
+  ],
+  &quot;human_review_items&quot;: [
+    &quot;确认 PDF 抽取是否遗漏公式上下文&quot;,
+    &quot;确认样例 anomaly index 是否符合论文意图&quot;,
+    &quot;确认算法是否适合真实数据&quot;
+  ]
+}</pre></section><section class="preview"><h3>output/validation_manifest.json</h3><pre>{
+  &quot;validated_at&quot;: &quot;2026-05-13T23:57:38.570480+00:00&quot;,
+  &quot;project_dir&quot;: &quot;repro_project&quot;,
+  &quot;py_compile&quot;: true,
+  &quot;unittest_stdout&quot;: &quot;&quot;,
+  &quot;unittest_stderr&quot;: &quot;..\n----------------------------------------------------------------------\nRan 2 tests in 0.000s\n\nOK\n&quot;,
+  &quot;removed_cache_entries&quot;: 2,
+  &quot;limits&quot;: [
+    &quot;syntax and sample tests only&quot;,
+    &quot;logic correctness requires human review&quot;
+  ]
+}</pre></section><section class="preview"><h3>repro_project/src/adaptive_window.py</h3><pre>from __future__ import annotations
+
+from pathlib import Path
+from chip_eval_env import load_signal_csv, mean, std, write_json
+
+
+def detect_anomalies(values: list[float], window: int = 4, threshold: float = 2.5) -&gt; list[dict]:
+    anomalies: list[dict] = []
+    for i, value in enumerate(values):
+        if i &lt; window:
+            continue
+        baseline = values[i - window:i]
+        score = abs(value - mean(baseline)) / max(std(baseline), 1e-6)
+        if score &gt;= threshold:
+            anomalies.append({&#x27;index&#x27;: i, &#x27;value&#x27;: value, &#x27;score&#x27;: round(score, 4)})
+    return anomalies
+
+
+def run(input_csv: str | Path, output_json: str | Path, window: int = 4, threshold: float = 2.5) -&gt; dict:
+    values = load_signal_csv(input_csv)
+    anomalies = detect_anomalies(values, window=window, threshold=threshold)
+    payload = {&#x27;window&#x27;: window, &#x27;threshold&#x27;: threshold, &#x27;count&#x27;: len(anomalies), &#x27;anomalies&#x27;: anomalies}
+    write_json(output_json, payload)
+    return payload
+
+
+if __name__ == &#x27;__main__&#x27;:
+    run(&#x27;data/sample_signal.csv&#x27;, &#x27;output/anomalies.json&#x27;)
+</pre></section>
+  </main>
+  <footer>Generated at 2026-05-13T23:57:38.758563+00:00. Viewer 只暴露演示产物目录，不暴露 protected 原始材料。</footer>
+</body>
+</html>

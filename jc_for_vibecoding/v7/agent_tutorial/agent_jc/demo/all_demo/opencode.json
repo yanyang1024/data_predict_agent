@@ -16,6 +16,7 @@
       "python3 run_all_demos.py": "allow",
       "python3 */run_demo.py": "allow",
       "python3 scripts/*.py*": "allow",
+      "python3 scripts/demo_viewer.py*": "allow",
       "rm *": "deny",
       "git push*": "deny"
     },

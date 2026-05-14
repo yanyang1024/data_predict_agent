@@ -45,7 +45,13 @@ python3 scripts/apply_patch_to_sandbox.py
 python3 scripts/validate_config_patch.py
 ```
 
-6. 输出回答：生成文件、被拒绝的动作、验证结果、人工确认点。
+6. 启动或重启 viewer：
+
+```bash
+python3 ../scripts/demo_viewer.py --demo 03_permission_sandbox_agent --port 8763 --restart
+```
+
+7. 输出回答：生成文件、被拒绝的动作、验证结果、人工确认点和浏览器 URL。
 
 ### 受控数据查询
 
@@ -63,7 +69,13 @@ python3 scripts/query_lot_history_service.py --lot LOT-A12
 python3 scripts/validate_data_service.py
 ```
 
-5. 输出回答：只汇报聚合字段、QTime / UT 口径、图表路径、原始字段隐藏情况和人工确认点。
+5. 启动或重启 viewer：
+
+```bash
+python3 ../scripts/demo_viewer.py --demo 03_permission_sandbox_agent --port 8763 --restart
+```
+
+6. 输出回答：只汇报聚合字段、QTime / UT 口径、图表路径、原始字段隐藏情况、人工确认点和浏览器 URL。
 
 ## Stop Rules
 

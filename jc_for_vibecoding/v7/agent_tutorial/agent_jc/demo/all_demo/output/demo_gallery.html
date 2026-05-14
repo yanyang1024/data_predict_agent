@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang='zh-CN'>
+<head>
+  <meta charset='utf-8' />
+  <meta name='viewport' content='width=device-width, initial-scale=1' />
+  <title>OpenCode Demo Gallery</title>
+  <style>
+    body{margin:0;background:#f6f8fb;color:#1f2937;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;line-height:1.5}
+    main{max-width:1180px;margin:0 auto;padding:28px}
+    header{display:flex;align-items:end;justify-content:space-between;gap:16px;margin-bottom:18px}
+    h1{margin:0;font-size:30px} p{color:#64748b}
+    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:14px}
+    article{background:#fff;border:1px solid #d8dee9;border-radius:8px;padding:16px}
+    .top{display:flex;justify-content:space-between;color:#0f766e;font-weight:700}
+    h2{margin:10px 0 6px;font-size:20px}
+    .visual{height:150px;border:1px solid #edf2f7;border-radius:8px;background:#fff;display:flex;align-items:center;justify-content:center;overflow:hidden}
+    .visual img,.visual svg{width:100%;height:100%;object-fit:contain}
+    .bar{width:82%;height:18px;background:#e5e7eb;border-radius:8px;overflow:hidden} .bar span{display:block;height:18px;background:#0f766e}
+    .links a{display:inline-block;margin-right:8px;padding:7px 10px;border-radius:8px;background:#0f766e;color:#fff;text-decoration:none;font-weight:700}
+    footer{margin-top:18px;color:#64748b;font-size:12px}
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <div><h1>OpenCode Demo Gallery</h1><p>四个 demo 的可视化入口，减少长链接堆叠。</p></div>
+      <small>2026-05-13T23:57:39.087803+00:00</small>
+    </header>
+    <section class='grid'>
+        <article>
+          <div class='top'><b>00</b><span>ready</span></div>
+          <h2>规则看板</h2>
+          <p>一句话进展 -&gt; dashboard</p>
+          <div class='visual'><div class='bar'><span style='width:30%'></span></div><small>教学进度与四个 demo 状态</small></div>
+          <p class='links'><a href='http://127.0.0.1:8760/'>Viewer</a><a href='http://127.0.0.1:8760/output/dashboard.html'>Primary</a></p>
+        </article>
+        
+        <article>
+          <div class='top'><b>01</b><span>ready</span></div>
+          <h2>Gradio -&gt; Flask</h2>
+          <p>CSV 分析 App 跨框架迁移</p>
+          <div class='visual'><img src='http://127.0.0.1:8761/output/framework_migration_map.svg' alt='framework migration map' /></div>
+          <p class='links'><a href='http://127.0.0.1:8761/'>Viewer</a><a href='http://127.0.0.1:8761/output/migration_report.md'>Primary</a></p>
+        </article>
+        
+        <article>
+          <div class='top'><b>02</b><span>ready</span></div>
+          <h2>PDF 复现</h2>
+          <p>evidence -&gt; project -&gt; validation</p>
+          <div class='visual'><svg viewBox='0 0 360 120' role='img' aria-label='reproduction flow'><rect width='360' height='120' fill='#ffffff'/><text x='28' y='38' font-size='15' font-weight='700' fill='#1f2937'>PDF</text><text x='148' y='38' font-size='15' font-weight='700' fill='#1f2937'>Evidence</text><text x='278' y='38' font-size='15' font-weight='700' fill='#1f2937'>Tests</text><line x1='66' y1='34' x2='132' y2='34' stroke='#64748b'/><line x1='218' y1='34' x2='268' y2='34' stroke='#64748b'/><rect x='26' y='62' width='308' height='18' rx='8' fill='#0f766e'/></svg></div>
+          <p class='links'><a href='http://127.0.0.1:8762/'>Viewer</a><a href='http://127.0.0.1:8762/output/design_brief.md'>Primary</a></p>
+        </article>
+        
+        <article>
+          <div class='top'><b>03</b><span>ready</span></div>
+          <h2>权限沙箱</h2>
+          <p>Data Service + protected boundary</p>
+          <div class='visual'><img src='http://127.0.0.1:8763/output/lot_qtime_chart.svg' alt='lot qtime chart' /></div>
+          <p class='links'><a href='http://127.0.0.1:8763/'>Viewer</a><a href='http://127.0.0.1:8763/output/lot_qtime_chart.svg'>Primary</a></p>
+        </article>
+        </section>
+    <footer>Viewer 服务仍分别运行在 8760-8763；本页只做总览和跳转。</footer>
+  </main>
+</body>
+</html>

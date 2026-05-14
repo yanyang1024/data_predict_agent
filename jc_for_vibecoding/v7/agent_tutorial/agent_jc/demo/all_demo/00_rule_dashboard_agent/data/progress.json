@@ -1,0 +1,52 @@
+{
+  "title": "OpenCode Context 工程 60 分钟教学看板",
+  "total_minutes": 60,
+  "current_minute": 10,
+  "speaker": "讲师",
+  "current_focus": "从规则驱动 dashboard 过渡到 Web App 跨框架迁移 demo",
+  "user_question": "如何把一个临时 prompt 沉淀成稳定 Agent 应用？",
+  "demos": [
+    {
+      "id": "00",
+      "name": "规则驱动看板",
+      "planned_start": 0,
+      "planned_minutes": 8,
+      "status": "in_progress",
+      "actual_note": "已生成 HTML 看板和 manifest"
+    },
+    {
+      "id": "01",
+      "name": "Web App 跨框架迁移",
+      "planned_start": 8,
+      "planned_minutes": 14,
+      "status": "in_progress",
+      "actual_note": "准备展示 Gradio -> Flask、前端风格 spec 和样例 CSV 验证"
+    },
+    {
+      "id": "02",
+      "name": "PDF 论文复现项目",
+      "planned_start": 22,
+      "planned_minutes": 18,
+      "status": "not_started",
+      "actual_note": "将展示 evidence -> project -> validation"
+    },
+    {
+      "id": "03",
+      "name": "权限约束与沙箱变更",
+      "planned_start": 40,
+      "planned_minutes": 12,
+      "status": "not_started",
+      "actual_note": "将展示 protected config 不可直接修改"
+    }
+  ],
+  "risks": [
+    "不要把 dashboard 模板写死在 prompt 中",
+    "自然语言抽取不确定时需要人工确认",
+    "HTML 生成成功不代表教学内容正确"
+  ],
+  "next_actions": [
+    "讲解 context 分层",
+    "打开 Demo 01 的迁移规范",
+    "运行样例 CSV 和风格验证"
+  ]
+}

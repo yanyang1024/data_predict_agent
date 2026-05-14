@@ -11,6 +11,8 @@ export default tool({
     const render = spawnSync("python3", ["scripts/generate_dashboard.py", "--input", args.input, "--output-dir", args.outputDir], { encoding: "utf-8" })
     if (render.status !== 0) return render.stderr || render.stdout
     const validate = spawnSync("python3", ["scripts/validate_dashboard.py", "--output-dir", args.outputDir], { encoding: "utf-8" })
-    return [render.stdout, validate.stdout, validate.stderr].filter(Boolean).join("\n")
+    if (validate.status !== 0) return [render.stdout, validate.stdout, validate.stderr].filter(Boolean).join("\n")
+    const viewer = spawnSync("python3", ["../scripts/demo_viewer.py", "--demo", "00_rule_dashboard_agent", "--port", "8760", "--restart"], { encoding: "utf-8" })
+    return [render.stdout, validate.stdout, viewer.stdout, viewer.stderr].filter(Boolean).join("\n")
   }
 })

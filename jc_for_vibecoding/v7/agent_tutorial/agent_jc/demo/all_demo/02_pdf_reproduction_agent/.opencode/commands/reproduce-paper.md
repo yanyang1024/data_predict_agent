@@ -15,4 +15,5 @@ $ARGUMENTS
 3. 调用抽取脚本生成 `output/evidence.json`。
 4. 基于 evidence 和 `env_pkg/chip_eval_env.py` 生成 `repro_project/`。
 5. 调用验证脚本。
-6. 最终回答必须区分：PDF 证据、生成动作、自动验证、人类 review 点。
+6. 调用 `../scripts/demo_viewer.py --demo 02_pdf_reproduction_agent --port 8762 --restart` 暴露 evidence、设计摘要、生成项目和验证结果。
+7. 最终回答必须区分：PDF 证据、生成动作、自动验证、人类 review 点和浏览器 URL。

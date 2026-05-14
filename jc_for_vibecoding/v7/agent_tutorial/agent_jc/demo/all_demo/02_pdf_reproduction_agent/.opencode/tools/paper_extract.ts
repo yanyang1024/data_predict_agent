@@ -25,6 +25,8 @@ export const build = tool({
     const build = spawnSync("python3", ["scripts/build_repro_project.py", "--evidence", args.evidence, "--env", args.env, "--output-dir", args.outputDir], { encoding: "utf-8" })
     if (build.status !== 0) return build.stderr || build.stdout
     const validate = spawnSync("python3", ["scripts/validate_repro_project.py", "--project-dir", args.outputDir], { encoding: "utf-8" })
-    return [build.stdout, validate.stdout, validate.stderr].filter(Boolean).join("\n")
+    if (validate.status !== 0) return [build.stdout, validate.stdout, validate.stderr].filter(Boolean).join("\n")
+    const viewer = spawnSync("python3", ["../scripts/demo_viewer.py", "--demo", "02_pdf_reproduction_agent", "--port", "8762", "--restart"], { encoding: "utf-8" })
+    return [build.stdout, validate.stdout, viewer.stdout, viewer.stderr].filter(Boolean).join("\n")
   }
 })

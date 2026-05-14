@@ -60,6 +60,13 @@ Step 8：写 command/tool/opencode.json，形成可复用入口和权限边界
 python3 run_demo.py
 ```
 
+运行后会自动启动或重启本地 viewer 服务，输出类似：
+
+```text
+Viewer URL: http://127.0.0.1:8763/
+Primary URL: http://127.0.0.1:8763/output/lot_qtime_chart.svg
+```
+
 ## OpenCode 演示 Prompt
 
 ```text

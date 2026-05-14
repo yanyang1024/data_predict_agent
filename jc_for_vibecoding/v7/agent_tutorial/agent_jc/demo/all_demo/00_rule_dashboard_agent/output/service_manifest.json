@@ -1,0 +1,16 @@
+{
+  "demo": "00_rule_dashboard_agent",
+  "title": "Demo 00 规则看板 Agent",
+  "host": "127.0.0.1",
+  "port": 8760,
+  "pid": 12567,
+  "ready": true,
+  "url": "http://127.0.0.1:8760/",
+  "primary_url": "http://127.0.0.1:8760/output/dashboard.html",
+  "viewer_path": "output/viewer.html",
+  "allowed_mounts": [
+    "output"
+  ],
+  "started_at": "2026-05-13T23:57:38.209754+00:00",
+  "note": "Viewer only serves generated demo artifacts. protected/ and policy/ are not mounted."
+}

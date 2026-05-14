@@ -12,6 +12,7 @@
       "*": "ask",
       "python3 scripts/generate_dashboard.py*": "allow",
       "python3 scripts/validate_dashboard.py*": "allow",
+      "python3 ../scripts/demo_viewer.py*": "allow",
       "python3 run_demo.py": "allow",
       "rm *": "deny"
     },

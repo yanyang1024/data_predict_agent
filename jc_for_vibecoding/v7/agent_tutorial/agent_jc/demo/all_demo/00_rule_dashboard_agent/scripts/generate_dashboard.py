@@ -81,7 +81,7 @@ def render_html(data: dict) -> str:
         f'<footer>Generated at {generated_at}. 本看板为教学演示产物，需要讲师确认内容准确性。</footer>',
         '</body>', '</html>'
     ]
-    return '\\n'.join(parts)
+    return '\n'.join(parts)
 
 
 def render_markdown(data: dict) -> str:
@@ -92,7 +92,7 @@ def render_markdown(data: dict) -> str:
     lines += [f'- {x}' for x in data.get('risks', [])]
     lines += ['', '## 下一步'] + [f'- {x}' for x in data.get('next_actions', [])]
     lines += ['', '> 注意：本报告只说明教学状态，实际内容需要讲师确认。']
-    return '\\n'.join(lines) + '\\n'
+    return '\n'.join(lines) + '\n'
 
 
 def main():

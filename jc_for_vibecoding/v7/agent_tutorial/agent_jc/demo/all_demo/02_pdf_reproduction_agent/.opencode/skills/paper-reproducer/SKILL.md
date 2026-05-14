@@ -34,7 +34,13 @@ python3 scripts/build_repro_project.py --evidence output/evidence.json --env env
 python3 scripts/validate_repro_project.py --project-dir repro_project
 ```
 
-5. 输出：说明哪些结果已由脚本验证，哪些仍需人工确认。
+5. 启动或重启 viewer：
+
+```bash
+python3 ../scripts/demo_viewer.py --demo 02_pdf_reproduction_agent --port 8762 --restart
+```
+
+6. 输出：说明哪些结果已由脚本验证，哪些仍需人工确认，并给出浏览器 URL。
 
 ## Stop Rules
 

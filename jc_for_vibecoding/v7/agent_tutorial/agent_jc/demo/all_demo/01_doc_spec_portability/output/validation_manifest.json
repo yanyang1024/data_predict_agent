@@ -1,11 +1,26 @@
 {
-  "module": "generated/pricing.mjs",
-  "cases": "tests/golden_cases.json",
-  "case_count": 5,
-  "node_stdout": "Golden cases passed: 5",
   "validated": true,
+  "project_dir": "generated/flask_app",
+  "cases": "tests/analysis_cases.json",
+  "case_count": 4,
+  "checked_cases": [
+    "sample_sales",
+    "no_numeric_columns",
+    "missing_values_exclude_incomplete_numeric_column",
+    "header_without_rows"
+  ],
+  "style_checks": {
+    "uses_style_spec_colors": true,
+    "radius_lte_8px": true,
+    "has_upload_panel": true,
+    "has_metric_cards": true,
+    "has_chart_panel": true
+  },
+  "flask_runtime_checked": false,
+  "flask_runtime_note": "Flask is not installed. Run: python3 -m pip install Flask",
   "limits": [
-    "golden cases validate sample behavior only",
-    "business logic requires human review"
+    "sample and boundary CSV behavior only",
+    "static style checks do not replace product design review",
+    "production upload security requires owner review"
   ]
 }

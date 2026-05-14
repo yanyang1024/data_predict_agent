@@ -9,6 +9,8 @@
 - `output/dashboard.html`：1 小时教学进度看板和甘特图；
 - `output/status_report.md`：讲师口播版进度摘要；
 - `output/dashboard_manifest.json`：可审计 manifest；
+- `output/viewer.html`：浏览器演示页，聚合执行状态、产物链接和效果预览；
+- `output/service_manifest.json`：本地 viewer 服务信息和可访问 URL；
 - 验证结果：`validate_dashboard.py` 检查必要区块和四个 demo 状态。
 
 ## 这个 demo 教什么
@@ -30,12 +32,20 @@ Step 4：写 dashboard-generator Skill，描述流程和人工确认点
 Step 5：写 /dashboard command，降低用户入口成本
 Step 6：写 dashboard.ts custom tool 示例，把脚本封装为结构化工具
 Step 7：写 opencode.json，限制 edit 和 bash 行为
+Step 8：调用 demo_viewer.py 自动重启本地服务，输出可直接打开的 URL
 ```
 
 ## 运行
 
 ```bash
 python3 run_demo.py
+```
+
+运行后会自动启动或重启本地 viewer 服务，输出类似：
+
+```text
+Viewer URL: http://127.0.0.1:8760/
+Primary URL: http://127.0.0.1:8760/output/dashboard.html
 ```
 
 ## OpenCode 演示 Prompt

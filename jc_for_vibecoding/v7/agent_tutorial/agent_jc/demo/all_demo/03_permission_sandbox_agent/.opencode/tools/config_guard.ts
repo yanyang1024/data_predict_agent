@@ -20,6 +20,8 @@ export default tool({
     if (apply.status !== 0) return apply.stderr || apply.stdout
 
     const validate = spawnSync("python3", ["scripts/validate_config_patch.py"], { encoding: "utf-8" })
-    return [propose.stdout, apply.stdout, validate.stdout, validate.stderr].filter(Boolean).join("\n")
+    if (validate.status !== 0) return [propose.stdout, apply.stdout, validate.stdout, validate.stderr].filter(Boolean).join("\n")
+    const viewer = spawnSync("python3", ["../scripts/demo_viewer.py", "--demo", "03_permission_sandbox_agent", "--port", "8763", "--restart"], { encoding: "utf-8" })
+    return [propose.stdout, apply.stdout, validate.stdout, viewer.stdout, viewer.stderr].filter(Boolean).join("\n")
   }
 })

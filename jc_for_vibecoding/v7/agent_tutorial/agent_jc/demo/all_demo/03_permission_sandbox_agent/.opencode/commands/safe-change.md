@@ -15,4 +15,5 @@ $ARGUMENTS
 3. 不要修改 `protected/prod_config.json` 或任何 `protected/` 文件。
 4. 只能调用 `scripts/propose_config_patch.py` 生成 proposal，再调用 `scripts/apply_patch_to_sandbox.py` 应用到 sandbox 输出。
 5. 最后调用 `scripts/validate_config_patch.py`，并报告验证结果、审计文件和人工确认点。
-6. 如果用户同时要求查询 lot history，引导使用 `/query-lot` 或 `scripts/query_lot_history_service.py`，不要读取 protected 原始数据。
+6. 调用 `../scripts/demo_viewer.py --demo 03_permission_sandbox_agent --port 8763 --restart` 暴露 proposal、sandbox 输出和验证 manifest。
+7. 如果用户同时要求查询 lot history，引导使用 `/query-lot` 或 `scripts/query_lot_history_service.py`，不要读取 protected 原始数据。

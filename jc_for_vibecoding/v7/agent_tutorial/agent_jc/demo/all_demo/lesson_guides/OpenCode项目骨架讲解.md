@@ -19,3 +19,7 @@ OpenCode custom tool 是 TypeScript / JavaScript 定义的函数，但内部可�
 ## 5. Permission：兜底边界
 
 Skill 里写“不要做”只是软约束；`opencode.json` 里的 deny/ask/allow 才是运行时边界。特别是数据、配置、生产脚本，要靠权限、封装脚本和 Data Service 一起控制。
+
+## 6. Viewer：教学展示入口
+
+每个 demo 生成和验证完成后，都应调用 `scripts/demo_viewer.py` 自动启动或重启本地 viewer 服务。Viewer 负责把 `output/`、`generated/`、`repro_project/` 中允许展示的产物暴露成浏览器链接，并展示执行状态、过程、产物链接和效果预览。不要把 `protected/`、policy 或原始数据目录挂到服务上。

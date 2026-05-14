@@ -9,6 +9,7 @@
 ```bash
 python3 scripts/generate_dashboard.py --input data/sample_progress.json --output-dir output
 python3 scripts/validate_dashboard.py --output-dir output
+python3 ../scripts/demo_viewer.py --demo 00_rule_dashboard_agent --port 8760 --restart
 ```
 
 ## Agent 工作流
@@ -17,4 +18,5 @@ python3 scripts/validate_dashboard.py --output-dir output
 2. 如果用户输入是自然语言，先提取为结构化 progress JSON；不能确定的字段用模板默认值。
 3. 调用脚本生成 dashboard。
 4. 运行验证脚本。
-5. 最终回答必须说明：哪些内容来自用户、哪些内容来自模板、哪些字段是默认值。
+5. 调用 `../scripts/demo_viewer.py` 启动或重启本地 viewer 服务。
+6. 最终回答必须说明：哪些内容来自用户、哪些内容来自模板、哪些字段是默认值，以及浏览器可访问 URL。

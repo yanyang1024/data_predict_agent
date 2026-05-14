@@ -1,0 +1,17 @@
+{
+  "demo": "01_doc_spec_portability",
+  "title": "Demo 01 Web App 跨框架迁移 Agent",
+  "host": "127.0.0.1",
+  "port": 8761,
+  "pid": 12573,
+  "ready": true,
+  "url": "http://127.0.0.1:8761/",
+  "primary_url": "http://127.0.0.1:8761/output/migration_report.md",
+  "viewer_path": "output/viewer.html",
+  "allowed_mounts": [
+    "output",
+    "generated"
+  ],
+  "started_at": "2026-05-13T23:57:38.463660+00:00",
+  "note": "Viewer only serves generated demo artifacts. protected/ and policy/ are not mounted."
+}

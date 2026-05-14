@@ -12,6 +12,7 @@ python3 scripts/apply_patch_to_sandbox.py
 python3 scripts/validate_config_patch.py
 python3 scripts/query_lot_history_service.py --lot LOT-A12
 python3 scripts/validate_data_service.py
+python3 ../scripts/demo_viewer.py --demo 03_permission_sandbox_agent --port 8763 --restart
 ```
 
 ## Agent 工作流
@@ -22,7 +23,8 @@ python3 scripts/validate_data_service.py
 4. 数据查询请求要识别 lot id、查询目的和允许输出字段。
 5. 只调用受控脚本，不直接编辑 JSON，不直接读取 protected 原始数据。
 6. 调用验证脚本检查 policy、schema、protected hash、审计日志和输出结果。
-7. 最终回答必须说明：哪些文件被生成、哪些 protected 文件没有被改、哪些原始字段没有暴露、哪些判断仍需人工确认。
+7. 验证后启动或重启 viewer 服务。
+8. 最终回答必须说明：哪些文件被生成、哪些 protected 文件没有被改、哪些原始字段没有暴露、哪些判断仍需人工确认，以及浏览器 URL。
 
 ## Stop Rules
 

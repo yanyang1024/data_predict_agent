@@ -6,15 +6,16 @@
       "*": "ask",
       "docs/**": "deny",
       "references/**": "deny",
-      "tests/golden_cases.json": "deny",
+      "tests/analysis_cases.json": "deny",
+      "tests/*.csv": "deny",
       "generated/**": "allow",
       "output/**": "allow"
     },
     "bash": {
       "*": "ask",
-      "python3 scripts/port_py_to_js.py*": "allow",
-      "python3 scripts/validate_port.py*": "allow",
-      "node tests/run_golden_cases.mjs*": "allow",
+      "python3 scripts/port_gradio_to_flask.py*": "allow",
+      "python3 scripts/validate_flask_port.py*": "allow",
+      "python3 ../scripts/demo_viewer.py*": "allow",
       "python3 run_demo.py": "allow",
       "rm *": "deny"
     },

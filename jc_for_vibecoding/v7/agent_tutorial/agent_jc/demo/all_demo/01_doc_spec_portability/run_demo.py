@@ -2,6 +2,27 @@
 from __future__ import annotations
 import subprocess
 
-subprocess.run(['python3', 'scripts/port_py_to_js.py', '--source', 'references/source/python_order_rules.py', '--output', 'generated/pricing.mjs', '--report', 'output/migration_report.md'], check=True)
-subprocess.run(['python3', 'scripts/validate_port.py', '--module', 'generated/pricing.mjs', '--cases', 'tests/golden_cases.json'], check=True)
-print('Demo 01 done: generated/pricing.mjs')
+subprocess.run([
+    'python3',
+    'scripts/port_gradio_to_flask.py',
+    '--source',
+    'references/source/gradio_csv_analyzer.py',
+    '--request',
+    'docs/user_migration_request.md',
+    '--style-spec',
+    'docs/frontend_style_spec.md',
+    '--output-dir',
+    'generated/flask_app',
+    '--report',
+    'output/migration_report.md',
+], check=True)
+subprocess.run([
+    'python3',
+    'scripts/validate_flask_port.py',
+    '--project-dir',
+    'generated/flask_app',
+    '--cases',
+    'tests/analysis_cases.json',
+], check=True)
+subprocess.run(['python3', '../scripts/demo_viewer.py', '--demo', '01_doc_spec_portability', '--port', '8761', '--restart'], check=True)
+print('Demo 01 done: generated/flask_app/')

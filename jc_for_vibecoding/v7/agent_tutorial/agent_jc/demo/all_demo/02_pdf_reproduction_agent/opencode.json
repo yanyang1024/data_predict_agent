@@ -16,6 +16,7 @@
       "python3 scripts/extract_pdf_evidence.py*": "allow",
       "python3 scripts/build_repro_project.py*": "allow",
       "python3 scripts/validate_repro_project.py*": "allow",
+      "python3 ../scripts/demo_viewer.py*": "allow",
       "python3 run_demo.py": "allow",
       "rm *": "deny"
     },

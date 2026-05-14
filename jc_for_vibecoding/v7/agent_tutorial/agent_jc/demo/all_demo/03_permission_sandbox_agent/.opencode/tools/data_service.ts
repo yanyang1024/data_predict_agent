@@ -11,6 +11,8 @@ export default tool({
     if (query.status !== 0) return query.stderr || query.stdout
 
     const validate = spawnSync("python3", ["scripts/validate_data_service.py"], { encoding: "utf-8" })
-    return [query.stdout, validate.stdout, validate.stderr].filter(Boolean).join("\n")
+    if (validate.status !== 0) return [query.stdout, validate.stdout, validate.stderr].filter(Boolean).join("\n")
+    const viewer = spawnSync("python3", ["../scripts/demo_viewer.py", "--demo", "03_permission_sandbox_agent", "--port", "8763", "--restart"], { encoding: "utf-8" })
+    return [query.stdout, validate.stdout, viewer.stdout, viewer.stderr].filter(Boolean).join("\n")
   }
 })

@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Demo 03 权限沙箱与受控数据服务 Agent</title>
+  <style>
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;margin:0;color:#202124;background:#f8fafc;line-height:1.55}
+header{background:#111827;color:white;padding:24px 32px}
+main{padding:24px 32px;max-width:1180px;margin:auto}
+h1{margin:0 0 8px;font-size:28px}
+h2{margin-top:28px}
+.summary{max-width:900px;color:#d1d5db}
+.links a{display:inline-block;margin-right:12px;color:white;font-weight:700}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin:18px 0}
+.cards article{background:white;border:1px solid #e5e7eb;border-radius:8px;padding:14px}
+.cards b,.cards span,.cards small{display:block}
+.cards span{font-size:22px;font-weight:700;margin:6px 0}
+.visual-panel{background:white;border:1px solid #e5e7eb;border-radius:8px;margin:20px 0;padding:16px}
+.visual-panel h2{margin:0 0 12px}
+.mini-viz{width:100%;height:auto;display:block;border:1px solid #eef2f7;border-radius:8px}
+.mini-viz-frame{width:100%;height:290px;border:1px solid #eef2f7;border-radius:8px;background:white}
+.mini-viz-frame.short{height:260px;margin-top:12px}
+.visual-chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.visual-chips span{background:#ecfeff;color:#155e75;border:1px solid #a5f3fc;border-radius:8px;padding:6px 9px;font-size:12px;font-weight:700}
+ol{background:white;border:1px solid #e5e7eb;border-radius:8px;padding:18px 18px 18px 42px}
+.artifacts{background:white;border:1px solid #e5e7eb;border-radius:8px;padding:8px 18px}
+.artifacts li{display:grid;grid-template-columns:minmax(140px,180px) minmax(120px,1fr) 80px;gap:12px;padding:8px 0;border-bottom:1px solid #f1f5f9}
+.artifacts li:last-child{border-bottom:0}
+code{font-family:"SFMono-Regular",Consolas,monospace;font-size:12px;color:#475569}
+.ready,.passed{color:#137333;font-weight:700}.missing{color:#a50e0e;font-weight:700}
+.preview{background:white;border:1px solid #e5e7eb;border-radius:8px;margin:16px 0;overflow:hidden}
+.preview h3{font-size:15px;margin:0;padding:10px 14px;background:#eef2ff;border-bottom:1px solid #e5e7eb}
+iframe{width:100%;height:520px;border:0;background:white}
+pre{margin:0;padding:14px;white-space:pre-wrap;overflow:auto;max-height:520px;font-size:13px;background:#0f172a;color:#e5e7eb}
+footer{padding:20px 32px;color:#64748b}
+</style>
+</head>
+<body>
+  <header>
+    <h1>Demo 03 权限沙箱与受控数据服务 Agent</h1>
+    <p class="summary">配置变更和 lot history 查询都通过受控脚本/API 输出，不暴露 protected 原始数据。</p>
+    <p class="links"><a href="http://127.0.0.1:8763/">Viewer</a><a href="http://127.0.0.1:8763/output/lot_qtime_chart.svg">Primary artifact</a></p>
+  </header>
+  <main>
+    <h2>执行状态</h2>
+    <section class="cards"><article><b>Config patch</b><span>passed</span><small>sandbox only</small></article><article><b>Data service</b><span>passed</span><small>field allowlist</small></article></section>
+    <section class='visual-panel'><h2>可视化结果</h2>
+<svg viewBox='0 0 900 210' class='mini-viz' role='img' aria-label='permission boundary'>
+  <rect width='900' height='210' fill='#ffffff'/>
+  <g font-family='-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif'>
+    <rect x='38' y='54' width='220' height='102' rx='8' fill='#fef2f2' stroke='#fecaca'/>
+    <text x='62' y='90' font-size='16' font-weight='700' fill='#7f1d1d'>Protected</text>
+    <text x='62' y='118' font-size='12' fill='#7f1d1d'>raw data and prod config</text>
+    <rect x='340' y='54' width='220' height='102' rx='8' fill='#ecfeff' stroke='#a5f3fc'/>
+    <text x='364' y='90' font-size='16' font-weight='700' fill='#155e75'>Data Service</text>
+    <text x='364' y='118' font-size='12' fill='#155e75'>allowlist + audit log</text>
+    <rect x='642' y='54' width='220' height='102' rx='8' fill='#f0fdf4' stroke='#bbf7d0'/>
+    <text x='666' y='90' font-size='16' font-weight='700' fill='#14532d'>Safe Output</text>
+    <text x='666' y='118' font-size='12' fill='#14532d'>LOT LOT-A12 / UT 0.6971</text>
+    <line x1='258' y1='105' x2='340' y2='105' stroke='#64748b' stroke-width='2' stroke-dasharray='6 6'/>
+    <line x1='560' y1='105' x2='642' y2='105' stroke='#64748b' stroke-width='2'/>
+    <text x='450' y='184' text-anchor='middle' font-size='13' font-weight='700' fill='#0f766e'>protected unchanged: true</text>
+  </g>
+</svg>
+<iframe class='mini-viz-frame short' src='/output/lot_qtime_chart.svg' title='lot qtime chart'></iframe></section>
+    <h2>执行过程</h2>
+    <ol><li>调用 propose_config_patch.py 生成 sandbox proposal</li><li>调用 apply_patch_to_sandbox.py 写入 sandbox 输出</li><li>调用 query_lot_history_service.py 返回聚合 QTime / UT 摘要和 SVG 图</li><li>调用验证脚本检查字段白名单、审计日志和 protected hash</li><li>启动本地 viewer 服务，只暴露 output 目录中的审计产物</li></ol>
+    <h2>产物链接</h2>
+    <ul class="artifacts"><li><a href="/output/lot_qtime_chart.svg">QTime / UT 图</a><code title="output/lot_qtime_chart.svg">output/lot_qtime_chart.svg</code><span class="ready">ready</span></li><li><a href="/output/lot_history_summary.json">lot history 聚合摘要</a><code title="output/lot_history_summary.json">output/lot_history_summary.json</code><span class="ready">ready</span></li><li><a href="/output/proposal_001.json">配置 proposal</a><code title="output/proposal_001.json">output/proposal_001.json</code><span class="ready">ready</span></li><li><a href="/output/sandbox_config_after.json">sandbox 配置结果</a><code title="output/sandbox_config_after.json">output/sandbox_config_after.json</code><span class="ready">ready</span></li><li><a href="/output/validation_manifest.json">配置验证 manifest</a><code title="output/validation_manifest.json">output/validation_manifest.json</code><span class="ready">ready</span></li><li><a href="/output/data_service_manifest.json">数据服务验证 manifest</a><code title="output/data_service_manifest.json">output/data_service_manifest.json</code><span class="ready">ready</span></li><li><a href="/output/audit_log.jsonl">审计日志</a><code title="output/audit_log.jsonl">output/audit_log.jsonl</code><span class="ready">ready</span></li><li><a href="/output/service_manifest.json">服务 manifest</a><code title="output/service_manifest.json">output/service_manifest.json</code><span class="ready">ready</span></li></ul>
+    <h2>效果预览</h2>
+    <section class="preview"><h3>output/lot_qtime_chart.svg</h3><iframe src="/output/lot_qtime_chart.svg" title="output/lot_qtime_chart.svg"></iframe></section><section class="preview"><h3>output/lot_history_summary.json</h3><pre>{
+  &quot;lot_id&quot;: &quot;LOT-A12&quot;,
+  &quot;product&quot;: &quot;DEMO-CHIP&quot;,
+  &quot;step_count&quot;: 4,
+  &quot;total_process_min&quot;: 244,
+  &quot;total_queue_min&quot;: 106,
+  &quot;max_queue_min&quot;: 56,
+  &quot;yield_status&quot;: &quot;pass&quot;,
+  &quot;utilization&quot;: 0.6971,
+  &quot;qtime_risk_steps&quot;: [],
+  &quot;chart&quot;: &quot;output/lot_qtime_chart.svg&quot;
+}
+</pre></section><section class="preview"><h3>output/data_service_manifest.json</h3><pre>{
+  &quot;status&quot;: &quot;passed&quot;,
+  &quot;summary&quot;: &quot;output/lot_history_summary.json&quot;,
+  &quot;chart&quot;: &quot;output/lot_qtime_chart.svg&quot;,
+  &quot;audit_log&quot;: &quot;output/audit_log.jsonl&quot;,
+  &quot;checks&quot;: {
+    &quot;schema_like&quot;: true,
+    &quot;field_allowlist&quot;: true,
+    &quot;lot_allowlist&quot;: true,
+    &quot;audit_events&quot;: [
+      &quot;lot_history_summary_generated&quot;,
+      &quot;proposal_created&quot;,
+      &quot;sandbox_output_written&quot;
+    ]
+  },
+  &quot;protected_files&quot;: {
+    &quot;protected/prod_config.json&quot;: {
+      &quot;expected_sha256&quot;: &quot;7c0c22e86f75e2eb48a9082b1df4160e47116c9639ffa06b5bb0cb2e928f6744&quot;,
+      &quot;actual_sha256&quot;: &quot;7c0c22e86f75e2eb48a9082b1df4160e47116c9639ffa06b5bb0cb2e928f6744&quot;,
+      &quot;unchanged&quot;: true
+    },
+    &quot;protected/customer_data.csv&quot;: {
+      &quot;expected_sha256&quot;: &quot;d053f711388cc779a70bb720639d620d81c933ec470438f880ba9ea3c441f700&quot;,
+      &quot;actual_sha256&quot;: &quot;d053f711388cc779a70bb720639d620d81c933ec470438f880ba9ea3c441f700&quot;,
+      &quot;unchanged&quot;: true
+    },
+    &quot;protected/lot_history_raw.csv&quot;: {
+      &quot;expected_sha256&quot;: &quot;97930935df21d2ed40d1bdfdef6c12b7060d16bee41b217f81bd1425df93d948&quot;,
+      &quot;actual_sha256&quot;: &quot;97930935df21d2ed40d1bdfdef6c12b7060d16bee41b217f81bd1425df93d948&quot;,
+      &quot;unchanged&quot;: true
+    }
+  },
+  &quot;errors&quot;: [],
+  &quot;human_review_required&quot;: [
+    &quot;自动验证只证明数据服务返回字段受控，不证明真实业务口径正确。&quot;,
+    &quot;QTime / UT 口径需要数据 owner 和工艺 owner 共同确认。&quot;,
+    &quot;真实落地时应把脚本替换为带鉴权、审计和限流的 HTTP Data Service。&quot;
+  ]
+}
+</pre></section><section class="preview"><h3>output/proposal_001.json</h3><pre>{
+  &quot;proposal_id&quot;: &quot;proposal_001&quot;,
+  &quot;requested_change&quot;: {
+    &quot;flag&quot;: &quot;beta_dashboard&quot;,
+    &quot;value&quot;: true,
+    &quot;reason&quot;: &quot;培训演示需要&quot;
+  },
+  &quot;scope&quot;: {
+    &quot;environment&quot;: &quot;sandbox&quot;,
+    &quot;target&quot;: &quot;workspace/sandbox_config.json&quot;,
+    &quot;write_output&quot;: &quot;output/sandbox_config_after.json&quot;
+  },
+  &quot;action_space&quot;: {
+    &quot;allowed_scripts&quot;: [
+      &quot;scripts/propose_config_patch.py&quot;,
+      &quot;scripts/apply_patch_to_sandbox.py&quot;,
+      &quot;scripts/validate_config_patch.py&quot;
+    ],
+    &quot;denied_paths&quot;: [
+      &quot;protected/prod_config.json&quot;,
+      &quot;protected/customer_data.csv&quot;
+    ]
+  },
+  &quot;operations&quot;: [
+    {
+      &quot;op&quot;: &quot;set_flag&quot;,
+      &quot;path&quot;: [
+        &quot;flags&quot;,
+        &quot;beta_dashboard&quot;
+      ],
+      &quot;before&quot;: false,
+      &quot;after&quot;: true
+    }
+  ],
+  &quot;evidence&quot;: {
+    &quot;policy&quot;: &quot;policy/allowed_flags.json&quot;,
+    &quot;schema&quot;: &quot;schemas/config_patch_schema.json&quot;,
+    &quot;sandbox_before&quot;: &quot;workspace/sandbox_config.json&quot;
+  },
+  &quot;human_review&quot;: [
+    &quot;确认业务原因是否充分。&quot;,
+    &quot;确认该变更只应用到 sandbox，而不是 production。&quot;,
+    &quot;确认自动验证只覆盖结构、安全边界和样例行为。&quot;
+  ]
+}
+</pre></section>
+  </main>
+  <footer>Generated at 2026-05-13T23:57:39.060350+00:00. Viewer 只暴露演示产物目录，不暴露 protected 原始材料。</footer>
+</body>
+</html>

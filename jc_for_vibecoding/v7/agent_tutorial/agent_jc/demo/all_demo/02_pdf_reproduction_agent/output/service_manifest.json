@@ -1,0 +1,17 @@
+{
+  "demo": "02_pdf_reproduction_agent",
+  "title": "Demo 02 PDF 证据抽取与复现 Agent",
+  "host": "127.0.0.1",
+  "port": 8762,
+  "pid": 12581,
+  "ready": true,
+  "url": "http://127.0.0.1:8762/",
+  "primary_url": "http://127.0.0.1:8762/output/design_brief.md",
+  "viewer_path": "output/viewer.html",
+  "allowed_mounts": [
+    "output",
+    "repro_project"
+  ],
+  "started_at": "2026-05-13T23:57:38.758074+00:00",
+  "note": "Viewer only serves generated demo artifacts. protected/ and policy/ are not mounted."
+}

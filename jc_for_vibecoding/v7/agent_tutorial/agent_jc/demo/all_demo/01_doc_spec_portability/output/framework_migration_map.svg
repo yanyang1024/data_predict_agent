@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 260" role="img" aria-label="Gradio to Flask migration map">
+  <rect width="920" height="260" fill="#f6f8fb"/>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L9,3 z" fill="#64748b"/>
+    </marker>
+  </defs>
+  <g font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif">
+    <rect x="32" y="54" width="210" height="136" rx="8" fill="#ffffff" stroke="#d8dee9"/>
+    <text x="56" y="88" font-size="18" font-weight="700" fill="#1f2937">Gradio Source</text>
+    <text x="56" y="120" font-size="13" fill="#475569">Blocks + File + Dataframe</text>
+    <text x="56" y="145" font-size="13" fill="#475569">CSV analysis function</text>
+    <text x="56" y="170" font-size="13" fill="#475569">Inline SVG chart</text>
+
+    <line x1="254" y1="122" x2="344" y2="122" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"/>
+    <rect x="356" y="54" width="210" height="136" rx="8" fill="#ffffff" stroke="#d8dee9"/>
+    <text x="380" y="88" font-size="18" font-weight="700" fill="#1f2937">Migration Context</text>
+    <text x="380" y="120" font-size="13" fill="#475569">Functional spec</text>
+    <text x="380" y="145" font-size="13" fill="#475569">Frontend style spec</text>
+    <text x="380" y="170" font-size="13" fill="#475569">User request</text>
+
+    <line x1="578" y1="122" x2="668" y2="122" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"/>
+    <rect x="680" y="54" width="210" height="136" rx="8" fill="#ffffff" stroke="#d8dee9"/>
+    <text x="704" y="88" font-size="18" font-weight="700" fill="#1f2937">Flask Output</text>
+    <text x="704" y="120" font-size="13" fill="#475569">app.py routes</text>
+    <text x="704" y="145" font-size="13" fill="#475569">Jinja template + CSS</text>
+    <text x="704" y="170" font-size="13" fill="#475569">Sample validation</text>
+
+    <rect x="356" y="210" width="210" height="26" rx="8" fill="#0f766e"/>
+    <text x="461" y="228" text-anchor="middle" font-size="13" font-weight="700" fill="#ffffff">same function + same UI style</text>
+  </g>
+</svg>

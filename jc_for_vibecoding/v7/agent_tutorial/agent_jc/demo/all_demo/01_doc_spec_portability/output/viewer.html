@@ -1,0 +1,290 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Demo 01 Web App 跨框架迁移 Agent</title>
+  <style>
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;margin:0;color:#202124;background:#f8fafc;line-height:1.55}
+header{background:#111827;color:white;padding:24px 32px}
+main{padding:24px 32px;max-width:1180px;margin:auto}
+h1{margin:0 0 8px;font-size:28px}
+h2{margin-top:28px}
+.summary{max-width:900px;color:#d1d5db}
+.links a{display:inline-block;margin-right:12px;color:white;font-weight:700}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin:18px 0}
+.cards article{background:white;border:1px solid #e5e7eb;border-radius:8px;padding:14px}
+.cards b,.cards span,.cards small{display:block}
+.cards span{font-size:22px;font-weight:700;margin:6px 0}
+.visual-panel{background:white;border:1px solid #e5e7eb;border-radius:8px;margin:20px 0;padding:16px}
+.visual-panel h2{margin:0 0 12px}
+.mini-viz{width:100%;height:auto;display:block;border:1px solid #eef2f7;border-radius:8px}
+.mini-viz-frame{width:100%;height:290px;border:1px solid #eef2f7;border-radius:8px;background:white}
+.mini-viz-frame.short{height:260px;margin-top:12px}
+.visual-chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.visual-chips span{background:#ecfeff;color:#155e75;border:1px solid #a5f3fc;border-radius:8px;padding:6px 9px;font-size:12px;font-weight:700}
+ol{background:white;border:1px solid #e5e7eb;border-radius:8px;padding:18px 18px 18px 42px}
+.artifacts{background:white;border:1px solid #e5e7eb;border-radius:8px;padding:8px 18px}
+.artifacts li{display:grid;grid-template-columns:minmax(140px,180px) minmax(120px,1fr) 80px;gap:12px;padding:8px 0;border-bottom:1px solid #f1f5f9}
+.artifacts li:last-child{border-bottom:0}
+code{font-family:"SFMono-Regular",Consolas,monospace;font-size:12px;color:#475569}
+.ready,.passed{color:#137333;font-weight:700}.missing{color:#a50e0e;font-weight:700}
+.preview{background:white;border:1px solid #e5e7eb;border-radius:8px;margin:16px 0;overflow:hidden}
+.preview h3{font-size:15px;margin:0;padding:10px 14px;background:#eef2ff;border-bottom:1px solid #e5e7eb}
+iframe{width:100%;height:520px;border:0;background:white}
+pre{margin:0;padding:14px;white-space:pre-wrap;overflow:auto;max-height:520px;font-size:13px;background:#0f172a;color:#e5e7eb}
+footer{padding:20px 32px;color:#64748b}
+</style>
+</head>
+<body>
+  <header>
+    <h1>Demo 01 Web App 跨框架迁移 Agent</h1>
+    <p class="summary">Gradio CSV 分析应用 + 用户迁移要求 + 前端风格规范 -&gt; Flask 项目 -&gt; 标准/边界 CSV 与静态风格验证。</p>
+    <p class="links"><a href="http://127.0.0.1:8761/">Viewer</a><a href="http://127.0.0.1:8761/output/migration_report.md">Primary artifact</a></p>
+  </header>
+  <main>
+    <h2>执行状态</h2>
+    <section class="cards"><article><b>CSV cases</b><span>passed</span><small>4 case(s)</small></article><article><b>UI style</b><span>passed</span><small>style spec checks</small></article><article><b>Flask project</b><span>ready</span><small>generated/flask_app</small></article></section>
+    <section class='visual-panel'><h2>可视化结果</h2><iframe class='mini-viz-frame' src='/output/framework_migration_map.svg' title='framework migration map'></iframe><div class='visual-chips'><span>4 CSV cases</span><span>Static + helper checks</span><span>same CSV workflow</span><span>same UI style spec</span></div></section>
+    <h2>执行过程</h2>
+    <ol><li>读取用户迁移要求、功能文档、迁移规范、前端风格规范和 Gradio 源实现</li><li>调用 port_gradio_to_flask.py 生成 generated/flask_app/</li><li>调用 validate_flask_port.py 运行标准路径、边界 CSV 行为验证和静态风格验证</li><li>启动本地 viewer 服务，暴露迁移报告、Flask 项目代码、可视化迁移图和验证 manifest</li></ol>
+    <h2>产物链接</h2>
+    <ul class="artifacts"><li><a href="/output/migration_report.md">迁移报告</a><code title="output/migration_report.md">output/migration_report.md</code><span class="ready">ready</span></li><li><a href="/output/framework_migration_map.svg">迁移图</a><code title="output/framework_migration_map.svg">output/framework_migration_map.svg</code><span class="ready">ready</span></li><li><a href="/generated/flask_app/app.py">Flask app</a><code title="generated/flask_app/app.py">flask_app/app.py</code><span class="ready">ready</span></li><li><a href="/generated/flask_app/templates/index.html">Jinja 模板</a><code title="generated/flask_app/templates/index.html">templates/index.html</code><span class="ready">ready</span></li><li><a href="/generated/flask_app/static/styles.css">样式文件</a><code title="generated/flask_app/static/styles.css">static/styles.css</code><span class="ready">ready</span></li><li><a href="/generated/flask_app/README.md">项目 README</a><code title="generated/flask_app/README.md">flask_app/README.md</code><span class="ready">ready</span></li><li><a href="/output/validation_manifest.json">验证 manifest</a><code title="output/validation_manifest.json">output/validation_manifest.json</code><span class="ready">ready</span></li><li><a href="/output/service_manifest.json">服务 manifest</a><code title="output/service_manifest.json">output/service_manifest.json</code><span class="ready">ready</span></li></ul>
+    <h2>效果预览</h2>
+    <section class="preview"><h3>output/framework_migration_map.svg</h3><iframe src="/output/framework_migration_map.svg" title="output/framework_migration_map.svg"></iframe></section><section class="preview"><h3>output/migration_report.md</h3><pre># Migration Report
+
+Generated at: 2026-05-13T23:57:38.251344+00:00
+
+## 输入
+
+- Source Gradio app: `references/source/gradio_csv_analyzer.py`
+- User request: `docs/user_migration_request.md`
+- Functional spec: `docs/csv_analysis_app_spec.md`
+- Migration spec: `docs/gradio_to_flask_migration_spec.md`
+- Frontend style spec: `docs/frontend_style_spec.md`
+- Output Flask project: `generated/flask_app`
+
+## 已迁移内容
+
+- `gr.Blocks` 页面结构 -&gt; `templates/index.html`
+- `gr.File` 上传 -&gt; Flask `POST /analyze`
+- `gr.Markdown` 总览 -&gt; metric cards
+- `gr.Dataframe` 数值摘要 -&gt; HTML table
+- `gr.HTML` SVG 图 -&gt; inline SVG chart panel
+- Gradio `css` 风格 -&gt; `static/styles.css`
+
+## 自动验证
+
+运行 `scripts/validate_flask_port.py` 后查看 `output/validation_manifest.json`。
+
+## 人工 review 点
+
+- Flask 依赖和部署方式需要项目 owner 确认。
+- 生产上传需要补充文件大小、MIME、病毒扫描、审计和清理策略。
+- 当前 SVG 图只覆盖基础柱状图，复杂数据可视化需要业务确认。
+- 标准和边界 CSV cases 覆盖了正常数据、无数值列、缺失值和空数据错误路径，但未覆盖大文件、混合编码和复杂脏数据。
+</pre></section><section class="preview"><h3>output/validation_manifest.json</h3><pre>{
+  &quot;validated&quot;: true,
+  &quot;project_dir&quot;: &quot;generated/flask_app&quot;,
+  &quot;cases&quot;: &quot;tests/analysis_cases.json&quot;,
+  &quot;case_count&quot;: 4,
+  &quot;checked_cases&quot;: [
+    &quot;sample_sales&quot;,
+    &quot;no_numeric_columns&quot;,
+    &quot;missing_values_exclude_incomplete_numeric_column&quot;,
+    &quot;header_without_rows&quot;
+  ],
+  &quot;style_checks&quot;: {
+    &quot;uses_style_spec_colors&quot;: true,
+    &quot;radius_lte_8px&quot;: true,
+    &quot;has_upload_panel&quot;: true,
+    &quot;has_metric_cards&quot;: true,
+    &quot;has_chart_panel&quot;: true
+  },
+  &quot;flask_runtime_checked&quot;: false,
+  &quot;flask_runtime_note&quot;: &quot;Flask is not installed. Run: python3 -m pip install Flask&quot;,
+  &quot;limits&quot;: [
+    &quot;sample and boundary CSV behavior only&quot;,
+    &quot;static style checks do not replace product design review&quot;,
+    &quot;production upload security requires owner review&quot;
+  ]
+}
+</pre></section><section class="preview"><h3>generated/flask_app/app.py</h3><pre>from __future__ import annotations
+
+import csv
+import io
+import statistics
+from html import escape
+
+try:
+    from flask import Flask, render_template, request
+except ImportError:  # Allows validation of pure analysis helpers without Flask installed.
+    Flask = None
+    render_template = None
+    request = None
+
+
+APP_TITLE = &quot;CSV Insight Workbench&quot;
+MAX_UPLOAD_BYTES = 2 * 1024 * 1024
+
+
+def coerce_number(value: str):
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def parse_csv_bytes(raw: bytes) -&gt; tuple[list[str], list[dict[str, str]]]:
+    text = raw.decode(&quot;utf-8-sig&quot;)
+    reader = csv.DictReader(io.StringIO(text))
+    if not reader.fieldnames:
+        raise ValueError(&quot;CSV must include a header row.&quot;)
+    rows = [
+        {key: (value or &quot;&quot;).strip() for key, value in row.items()}
+        for row in reader
+    ]
+    if not rows:
+        raise ValueError(&quot;CSV must include at least one data row.&quot;)
+    return list(reader.fieldnames), rows
+
+
+def detect_numeric_columns(fieldnames: list[str], rows: list[dict[str, str]]) -&gt; dict[str, list[float]]:
+    numeric: dict[str, list[float]] = {}
+    for column in fieldnames:
+        values: list[float] = []
+        complete_numeric = True
+        for row in rows:
+            raw_value = row.get(column, &quot;&quot;).strip()
+            if raw_value == &quot;&quot;:
+                complete_numeric = False
+                break
+            number = coerce_number(raw_value)
+            if number is None:
+                complete_numeric = False
+                break
+            values.append(number)
+        if complete_numeric and values:
+            numeric[column] = values
+    return numeric
+
+
+def summarize_numeric(numeric: dict[str, list[float]]) -&gt; list[dict[str, float | int | str]]:
+    summaries = []
+    for column, values in numeric.items():
+        summaries.append(
+            {
+                &quot;column&quot;: column,
+                &quot;count&quot;: len(values),
+                &quot;mean&quot;: round(statistics.mean(values), 2),
+                &quot;min&quot;: round(min(values), 2),
+                &quot;max&quot;: round(max(values), 2),
+            }
+        )
+    return summaries
+
+
+def missing_counts(fieldnames: list[str], rows: list[dict[str, str]]) -&gt; list[dict[str, int | str]]:
+    return [
+        {
+            &quot;column&quot;: column,
+            &quot;missing&quot;: sum(1 for row in rows if row.get(column, &quot;&quot;).strip() == &quot;&quot;),
+        }
+        for column in fieldnames
+    ]
+
+
+def build_bar_svg(column: str | None, values: list[float]) -&gt; str:
+    if not column or not values:
+        return (
+            &quot;&lt;svg viewBox=&#x27;0 0 680 260&#x27; role=&#x27;img&#x27; aria-label=&#x27;empty chart&#x27;&gt;&quot;
+            &quot;&lt;rect width=&#x27;680&#x27; height=&#x27;260&#x27; fill=&#x27;#f6f8fb&#x27;/&gt;&quot;
+            &quot;&lt;text x=&#x27;28&#x27; y=&#x27;44&#x27; fill=&#x27;#1f2937&#x27;&gt;No numeric column detected.&lt;/text&gt;&quot;
+            &quot;&lt;/svg&gt;&quot;
+        )
+
+    width = 680
+    height = 260
+    left = 54
+    bottom = 218
+    plot_width = 560
+    plot_height = 156
+    max_value = max(values) or 1
+    bar_gap = 10
+    bar_width = max(14, int((plot_width - bar_gap * (len(values) - 1)) / max(len(values), 1)))
+    bars = []
+    for index, value in enumerate(values[:12]):
+        bar_height = int((value / max_value) * plot_height)
+        x = left + index * (bar_width + bar_gap)
+        y = bottom - bar_height
+        label = escape(str(index + 1))
+        bars.append(
+            f&quot;&lt;rect x=&#x27;{x}&#x27; y=&#x27;{y}&#x27; width=&#x27;{bar_width}&#x27; height=&#x27;{bar_height}&#x27; rx=&#x27;4&#x27; fill=&#x27;#0f766e&#x27;/&gt;&quot;
+            f&quot;&lt;text x=&#x27;{x + bar_width / 2:.1f}&#x27; y=&#x27;238&#x27; text-anchor=&#x27;middle&#x27; fill=&#x27;#64748b&#x27; font-size=&#x27;11&#x27;&gt;{label}&lt;/text&gt;&quot;
+        )
+    title = escape(column)
+    return (
+        f&quot;&lt;svg viewBox=&#x27;0 0 {width} {height}&#x27; role=&#x27;img&#x27; aria-label=&#x27;{title} bar chart&#x27;&gt;&quot;
+        &quot;&lt;rect width=&#x27;680&#x27; height=&#x27;260&#x27; fill=&#x27;#ffffff&#x27;/&gt;&quot;
+        f&quot;&lt;text x=&#x27;28&#x27; y=&#x27;34&#x27; fill=&#x27;#1f2937&#x27; font-size=&#x27;18&#x27; font-weight=&#x27;700&#x27;&gt;{title}&lt;/text&gt;&quot;
+        &quot;&lt;line x1=&#x27;54&#x27; y1=&#x27;218&#x27; x2=&#x27;624&#x27; y2=&#x27;218&#x27; stroke=&#x27;#d8dee9&#x27;/&gt;&quot;
+        &quot;&lt;line x1=&#x27;54&#x27; y1=&#x27;62&#x27; x2=&#x27;54&#x27; y2=&#x27;218&#x27; stroke=&#x27;#d8dee9&#x27;/&gt;&quot;
+        + &quot;&quot;.join(bars) +
+        f&quot;&lt;text x=&#x27;624&#x27; y=&#x27;56&#x27; text-anchor=&#x27;end&#x27; fill=&#x27;#64748b&#x27; font-size=&#x27;12&#x27;&gt;max {round(max_value, 2)}&lt;/text&gt;&quot;
+        &quot;&lt;/svg&gt;&quot;
+    )
+
+
+def analyze_csv_bytes(raw: bytes) -&gt; dict:
+    fieldnames, rows = parse_csv_bytes(raw)
+    numeric = detect_numeric_columns(fieldnames, rows)
+    chart_column = next(iter(numeric.keys()), None)
+    chart_values = numeric.get(chart_column, []) if chart_column else []
+    return {
+        &quot;row_count&quot;: len(rows),
+        &quot;column_count&quot;: len(fieldnames),
+        &quot;numeric_count&quot;: len(numeric),
+        &quot;chart_column&quot;: chart_column or &quot;none&quot;,
+        &quot;summaries&quot;: summarize_numeric(numeric),
+        &quot;missing_counts&quot;: missing_counts(fieldnames, rows),
+        &quot;chart_svg&quot;: build_bar_svg(chart_column, chart_values),
+    }
+
+
+def create_app():
+    if Flask is None:
+        raise RuntimeError(&quot;Flask is not installed. Run: python3 -m pip install Flask&quot;)
+
+    app = Flask(__name__)
+    app.config[&quot;MAX_CONTENT_LENGTH&quot;] = MAX_UPLOAD_BYTES
+
+    @app.get(&quot;/&quot;)
+    def index():
+        return render_template(&quot;index.html&quot;, title=APP_TITLE, result=None, error=None)
+
+    @app.post(&quot;/analyze&quot;)
+    def analyze():
+        upload = request.files.get(&quot;csv_file&quot;)
+        if upload is None or upload.filename == &quot;&quot;:
+            return render_template(&quot;index.html&quot;, title=APP_TITLE, result=None, error=&quot;Please choose a CSV file.&quot;)
+        try:
+            result = analyze_csv_bytes(upload.read())
+        except Exception as exc:
+            return render_template(&quot;index.html&quot;, title=APP_TITLE, result=None, error=str(exc))
+        return render_template(&quot;index.html&quot;, title=APP_TITLE, result=result, error=None)
+
+    return app
+
+
+app = create_app() if Flask is not None else None
+
+
+if __name__ == &quot;__main__&quot;:
+    if app is None:
+        raise SystemExit(&quot;Flask is not installed. Run: python3 -m pip install Flask&quot;)
+    app.run(debug=True)
+</pre></section>
+  </main>
+  <footer>Generated at 2026-05-13T23:57:38.464048+00:00. Viewer 只暴露演示产物目录，不暴露 protected 原始材料。</footer>
+</body>
+</html>

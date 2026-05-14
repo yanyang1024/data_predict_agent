@@ -38,10 +38,17 @@ python3 scripts/generate_dashboard.py --input data/sample_progress.json --output
 python3 scripts/validate_dashboard.py --output-dir output
 ```
 
-5. 输出回答：说明输入来源、生成文件、验证结果、仍需人工确认的教学内容。
+5. 启动或重启 viewer：
+
+```bash
+python3 ../scripts/demo_viewer.py --demo 00_rule_dashboard_agent --port 8760 --restart
+```
+
+6. 输出回答：说明输入来源、生成文件、验证结果、浏览器 URL、仍需人工确认的教学内容。
 
 ## Stop Rules
 
 - 不要把用户的临时自然语言直接当作最终事实；不确定时标记为默认值或待确认。
 - 不要覆盖模板或 schema。
 - 不要声称 dashboard 内容代表真实教学进度，除非讲师确认。
+- 不要让讲师自己到目录里找 HTML；生成后必须提供 viewer URL 和 primary URL。

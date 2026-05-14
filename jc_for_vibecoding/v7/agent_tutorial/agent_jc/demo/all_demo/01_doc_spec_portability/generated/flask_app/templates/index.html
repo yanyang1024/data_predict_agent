@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{{ title }}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}" />
+</head>
+<body>
+  <main class="shell">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">CSV table analysis</p>
+        <h1>{{ title }}</h1>
+      </div>
+      <span class="status-pill">Flask migration</span>
+    </header>
+
+    <section class="upload-panel" aria-label="CSV upload">
+      <form action="/analyze" method="post" enctype="multipart/form-data">
+        <label for="csv_file">CSV file</label>
+        <div class="upload-row">
+          <input id="csv_file" name="csv_file" type="file" accept=".csv,text/csv" />
+          <button type="submit">Analyze CSV</button>
+        </div>
+      </form>
+      {% if error %}
+        <p class="error">{{ error }}</p>
+      {% endif %}
+    </section>
+
+    {% if result %}
+      <section class="metrics" aria-label="summary metrics">
+        <article><span>Rows</span><strong>{{ result.row_count }}</strong></article>
+        <article><span>Columns</span><strong>{{ result.column_count }}</strong></article>
+        <article><span>Numeric</span><strong>{{ result.numeric_count }}</strong></article>
+        <article><span>Chart</span><strong>{{ result.chart_column }}</strong></article>
+      </section>
+
+      <section class="workspace">
+        <article class="chart-panel">
+          <h2>Recommended Chart</h2>
+          <div class="chart">{{ result.chart_svg | safe }}</div>
+        </article>
+
+        <article class="table-panel">
+          <h2>Numeric Summary</h2>
+          <table>
+            <thead>
+              <tr><th>Column</th><th>Count</th><th>Mean</th><th>Min</th><th>Max</th></tr>
+            </thead>
+            <tbody>
+              {% for row in result.summaries %}
+                <tr>
+                  <td>{{ row.column }}</td>
+                  <td>{{ row.count }}</td>
+                  <td>{{ row.mean }}</td>
+                  <td>{{ row.min }}</td>
+                  <td>{{ row.max }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </article>
+      </section>
+
+      <section class="table-panel">
+        <h2>Missing Values</h2>
+        <table>
+          <thead><tr><th>Column</th><th>Missing</th></tr></thead>
+          <tbody>
+            {% for row in result.missing_counts %}
+              <tr><td>{{ row.column }}</td><td>{{ row.missing }}</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </section>
+    {% else %}
+      <section class="empty-state">
+        <strong>Upload a CSV to generate metrics and a chart.</strong>
+        <span>The app keeps analysis in memory and renders the plot as inline SVG.</span>
+      </section>
+    {% endif %}
+  </main>
+</body>
+</html>

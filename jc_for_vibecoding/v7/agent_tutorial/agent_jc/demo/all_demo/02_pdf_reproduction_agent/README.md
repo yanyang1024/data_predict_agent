@@ -47,6 +47,13 @@ Step 8：在回答中区分“自动验证通过”和“论文逻辑需人工�
 python3 run_demo.py
 ```
 
+运行后会自动启动或重启本地 viewer 服务，输出类似：
+
+```text
+Viewer URL: http://127.0.0.1:8762/
+Primary URL: http://127.0.0.1:8762/output/design_brief.md
+```
+
 ## OpenCode 演示 Prompt
 
 ```text

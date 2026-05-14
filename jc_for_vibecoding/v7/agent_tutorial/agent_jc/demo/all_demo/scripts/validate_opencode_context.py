@@ -10,6 +10,9 @@ DEMOS = [p for p in ROOT.iterdir() if p.is_dir() and re.match(r'^\d\d_', p.name)
 NAME_RE = re.compile(r'^[a-z0-9]+(-[a-z0-9]+)*$')
 errors: list[str] = []
 
+if not (ROOT / 'scripts' / 'demo_viewer.py').exists():
+    errors.append('root: missing scripts/demo_viewer.py')
+
 for demo in DEMOS:
     for required in ['README.md', 'AGENTS.md', 'opencode.json', 'run_demo.py']:
         if not (demo / required).exists():
@@ -18,6 +21,12 @@ for demo in DEMOS:
         json.loads((demo / 'opencode.json').read_text(encoding='utf-8'))
     except Exception as exc:
         errors.append(f'{demo.name}: invalid opencode.json: {exc}')
+    run_demo_text = (demo / 'run_demo.py').read_text(encoding='utf-8') if (demo / 'run_demo.py').exists() else ''
+    if 'demo_viewer.py' not in run_demo_text:
+        errors.append(f'{demo.name}: run_demo.py does not start demo viewer')
+    opencode_text = (demo / 'opencode.json').read_text(encoding='utf-8') if (demo / 'opencode.json').exists() else ''
+    if 'demo_viewer.py' not in opencode_text:
+        errors.append(f'{demo.name}: opencode.json does not allow demo viewer script')
     skill_root = demo / '.opencode' / 'skills'
     if not skill_root.exists():
         errors.append(f'{demo.name}: missing .opencode/skills')

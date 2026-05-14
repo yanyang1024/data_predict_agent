@@ -9,7 +9,7 @@
 ## Demo 01
 
 ```text
-/port-spec 请把 references/source/python_order_rules.py 按 docs/porting_spec_py_to_js.md 的规范迁移到 generated/pricing.mjs。先输出迁移计划和风险点，再调用脚本生成，并运行 golden tests。
+/port-spec 请把 references/source/gradio_csv_analyzer.py 迁移为 Flask 项目，输出到 generated/flask_app/。要求保持 docs/csv_analysis_app_spec.md 中的 CSV 分析和绘图功能，并遵循 docs/frontend_style_spec.md 的前端风格。先输出迁移计划和风险点，再调用脚本生成，并运行标准路径和边界 CSV 验证。
 ```
 
 ## Demo 02

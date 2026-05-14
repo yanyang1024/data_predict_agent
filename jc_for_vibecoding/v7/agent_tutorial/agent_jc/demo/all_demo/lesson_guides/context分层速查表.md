@@ -7,8 +7,9 @@
 | 流程层 | 某类任务怎么做、何时停止、如何报告 | `.opencode/skills/<name>/SKILL.md` | 把一次 prompt 变成一类 SOP |
 | 入口层 | 高频任务的一句话命令 | `.opencode/commands/*.md` | 降低用户发起任务门槛 |
 | 动作层 | 可执行能力、受控 API、脚本封装、Data Service | `.opencode/tools/*.ts`、`scripts/*.py`、内部 HTTP/API 服务 | 让 Agent 真正能做事，同时限制可执行动作 |
-| 证据层 | 历史文档、样例、schema、模板、golden cases | `references/`、`docs/`、`tests/` | 让 Agent 有依据，不凭空生成 |
+| 证据层 | 历史文档、源实现、样例、schema、模板、验收 cases | `references/`、`docs/`、`tests/` | 让 Agent 有依据，不凭空生成 |
 | 观察层 | 测试结果、lint、manifest、diff、报告 | `output/`、`manifest.json` | 让 Agent 能验证和纠偏 |
+| 展示层 | 浏览器入口、执行状态页、主要产物预览 | `output/viewer.html`、`output/service_manifest.json`、本地 viewer 服务 | 让讲师和业务方直观看到执行过程和效果 |
 | 安全层 | 权限、白名单、字段脱敏、sandbox、stop rules | `opencode.json`、policy、Skill stop rules | 缩小动作空间，避免误操作和数据泄露 |
 
 ## 四个设计原则

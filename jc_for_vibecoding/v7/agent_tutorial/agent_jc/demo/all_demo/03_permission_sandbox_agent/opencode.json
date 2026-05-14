@@ -21,6 +21,7 @@
       "python3 scripts/validate_config_patch.py*": "allow",
       "python3 scripts/query_lot_history_service.py*": "allow",
       "python3 scripts/validate_data_service.py*": "allow",
+      "python3 ../scripts/demo_viewer.py*": "allow",
       "python3 run_demo.py": "allow",
       "rm *": "deny"
     },

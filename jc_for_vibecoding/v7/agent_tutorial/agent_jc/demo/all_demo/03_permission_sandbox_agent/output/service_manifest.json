@@ -1,0 +1,16 @@
+{
+  "demo": "03_permission_sandbox_agent",
+  "title": "Demo 03 权限沙箱与受控数据服务 Agent",
+  "host": "127.0.0.1",
+  "port": 8763,
+  "pid": 12590,
+  "ready": true,
+  "url": "http://127.0.0.1:8763/",
+  "primary_url": "http://127.0.0.1:8763/output/lot_qtime_chart.svg",
+  "viewer_path": "output/viewer.html",
+  "allowed_mounts": [
+    "output"
+  ],
+  "started_at": "2026-05-13T23:57:39.058885+00:00",
+  "note": "Viewer only serves generated demo artifacts. protected/ and policy/ are not mounted."
+}

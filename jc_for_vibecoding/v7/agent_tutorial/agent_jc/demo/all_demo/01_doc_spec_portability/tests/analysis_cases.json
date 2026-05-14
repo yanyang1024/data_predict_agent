@@ -1,0 +1,57 @@
+[
+  {
+    "name": "sample_sales",
+    "csv": "tests/sample_sales.csv",
+    "expected": {
+      "row_count": 6,
+      "column_count": 5,
+      "numeric_columns": ["units", "revenue", "defect_rate"],
+      "chart_column": "units",
+      "missing_counts": {
+        "day": 0,
+        "product": 0,
+        "units": 0,
+        "revenue": 0,
+        "defect_rate": 0
+      }
+    }
+  },
+  {
+    "name": "no_numeric_columns",
+    "csv": "tests/no_numeric.csv",
+    "expected": {
+      "row_count": 3,
+      "column_count": 3,
+      "numeric_columns": [],
+      "chart_column": "none",
+      "missing_counts": {
+        "day": 0,
+        "product": 0,
+        "status": 0
+      }
+    }
+  },
+  {
+    "name": "missing_values_exclude_incomplete_numeric_column",
+    "csv": "tests/missing_values.csv",
+    "expected": {
+      "row_count": 4,
+      "column_count": 5,
+      "numeric_columns": ["revenue", "defect_rate"],
+      "excluded_numeric_columns": ["units"],
+      "chart_column": "revenue",
+      "missing_counts": {
+        "day": 0,
+        "product": 0,
+        "units": 1,
+        "revenue": 0,
+        "defect_rate": 0
+      }
+    }
+  },
+  {
+    "name": "header_without_rows",
+    "csv": "tests/header_only.csv",
+    "expected_error": "at least one data row"
+  }
+]
