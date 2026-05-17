@@ -1,0 +1,4 @@
+CREATE DATABASE IF NOT EXISTS flash_agents CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE USER IF NOT EXISTS 'flash'@'%' IDENTIFIED BY 'flash';
+GRANT ALL PRIVILEGES ON flash_agents.* TO 'flash'@'%';
+FLUSH PRIVILEGES;

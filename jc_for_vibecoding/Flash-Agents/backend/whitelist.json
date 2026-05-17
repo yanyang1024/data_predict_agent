@@ -1,0 +1,20 @@
+{
+  "domains": ["RD", "MEC", "IT"],
+  "users": [
+    {
+      "email": "admin@example.com",
+      "display_name": "系统管理员",
+      "domain": "IT",
+      "employee_no": 1,
+      "roles": ["admin", "user"],
+      "is_admin": true
+    },
+    {
+      "email": "rd@example.com",
+      "display_name": "研发用户",
+      "domain": "RD",
+      "employee_no": 101,
+      "roles": ["user"]
+    }
+  ]
+}

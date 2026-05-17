@@ -1,0 +1,27 @@
+[Unit]
+Description=Flash-Agents OpenCode sandbox instance for user %i
+After=network.target
+
+[Service]
+Type=simple
+Environment=FLASH_AGENTS_HOME=/opt/flash-agents
+EnvironmentFile=%h/.config/flash-agents/opencode/%i.env
+ExecStart=/usr/bin/env bash -lc '"${FLASH_AGENTS_HOME:-/opt/flash-agents}/scripts/opencode_bwrap_wrapper.sh" %i'
+Restart=on-failure
+RestartSec=3
+KillSignal=SIGTERM
+TimeoutStopSec=15
+MemoryAccounting=yes
+CPUAccounting=yes
+TasksAccounting=yes
+MemoryMax=32G
+CPUQuota=200%
+TasksMax=512
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=%h/.config/flash-agents %h/.cache %h/.local /tmp
+
+[Install]
+WantedBy=default.target

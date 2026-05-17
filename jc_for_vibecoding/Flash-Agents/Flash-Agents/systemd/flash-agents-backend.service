@@ -1,0 +1,17 @@
+[Unit]
+Description=Flash-Agents FastAPI backend
+After=network-online.target mariadb.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/flash-agents
+Environment=PYTHONPATH=/opt/flash-agents
+ExecStart=/opt/flash-agents/backend/.venv/bin/uvicorn backend.main:app --host 0.0.0.0 --port 8000
+Restart=on-failure
+RestartSec=3
+User=flashagents
+Group=flashagents
+
+[Install]
+WantedBy=multi-user.target
