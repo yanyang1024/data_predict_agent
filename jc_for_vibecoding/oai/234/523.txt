@@ -1,0 +1,854 @@
+我会按“visual sidecar index”旁路扩展来做：独立管理 PDF 图片的解析、元数据、索引、检索和引用，并同步更新 Skill 包。
+
+我查到的可借鉴方向主要是多模态文档 RAG：页级视觉检索、图表/表格区域抽取、图片 caption 摘要化，以及用文本命中页反查图片。
+
+已思考 13m 57s
+
+已按你的思路完成：不改原文本 RAG 知识库，新增一套独立的 PDF 视觉旁路知识库 Visual Sidecar，专门管理、解析、索引和检索 PDF 里的图片/页面/crop，用来支撑图文问答里的“图”。
+
+更新后的 Skill 包在这里：
+下载更新后的 skill.zip
+
+核心文件也可以单独查看：
+
+SKILL.md
+---
+name: multimodal-rag-answering
+description: use this skill when answering questions with a rag-backed knowledge base, uploaded/new documents, or pdf-derived evidence and the response should combine text with useful visuals. supports deciding whether to quote images from source pdfs, retrieve images from an independent pdf visual sidecar index, request page or figure crops, or create generated html-rendered visuals such as charts, timelines, process diagrams, and architecture sketches. use for multimodal document qa, visual evidence planning, image-text answer organization, source-grounded visual explanations, and extending text-only rag systems with independent pdf image management, indexing, and retrieval.
+---
+
+# Multimodal RAG Answering
+
+## 定位
+
+把本 Skill 当作“图文问答编排规范 + PDF 视觉旁路知识库方法论”。它不要求替换原有文本 RAG，而是在原知识库之外增加一套独立的 PDF 视觉资产管理、索引、检索和回答编排逻辑。
+
+默认目标：让回答从“只给文字结论”升级为“文字结论 + 必要视觉证据/生成示意图 + 可追溯来源”。
+
+## 两层能力
+
+1. **回答编排层**：判断什么时候需要图、图来自哪里、如何和文字结论绑定、如何避免无依据的视觉化表达。
+2. **视觉旁路层**：在不改变原文本知识库的前提下，独立管理 PDF 页面图、图表 crop、图片 caption、bbox、asset_uri、视觉摘要和检索索引。
+
+当任务涉及“如何建设视觉索引/图片库/API/字段/落地方案”时，读取 `references/pdf-visual-sidecar.md`。需要最小参考实现时，可使用或改造 `scripts/visual_pdf_kb.py`。
+
+## 核心原则
+
+1. 先回答问题，再决定视觉；不要为了图文并茂而加装饰图。
+2. 把图片分为两类，并在回复中显式标注：
+   - **source visual / 原文引用图**：来自知识库 PDF、上传文档、页面截图、图表、表格、流程图、架构图、产品截图等。
+   - **generated visual / 生成渲染图**：基于已检索事实、用户输入或计算结果生成的 HTML/SVG/图表/卡片/流程图/时间线等。
+3. 原文引用图用于“证明和还原”；生成渲染图用于“解释和组织”。
+4. 所有图片都必须服务于一个明确文本结论。图片不能单独承担事实断言。
+5. 无法追溯来源时，不要伪装成引用图；只能作为“基于当前信息生成的示意图”，并说明依据。
+6. 视觉旁路索引只能补充原 RAG，不应覆盖、污染或重写原文本知识库的 chunk、embedding、召回链路。
+
+## 输入假设
+
+处理任务时优先寻找或要求后端提供这些字段。不要假设字段一定存在。
+
+- 用户问题：query、意图、关注对象、希望输出的详细程度。
+- RAG 文本证据：chunk text、doc_id、title、page、section、score、source_url 或 storage_key。
+- PDF 视觉证据：page image、figure/table crop、bbox、caption、page number、doc_id、asset_uri。
+- 视觉旁路检索结果：asset_id、visual_type、doc_id、page、bbox、image_uri、caption、nearby_text、visual_summary、retrieval_score。
+- 新文档证据：文件名、页码、段落、图片/表格位置、上传时间。
+- 可视化数据：指标、分类、时间序列、对比维度、计算口径。
+
+如果当前上下文只有文本 chunk，但问题明显需要原文图表、页面布局或截图，则先尝试从视觉旁路索引检索对应 PDF 页图、图表 crop 或表格截图；拿不到时再退回文字解释或生成示意图。
+
+## 视觉决策流程
+
+按以下顺序决策。
+
+### 1. 判断是否需要图片
+
+优先加入图片的情况：
+
+- 用户明确要求“图文”“截图”“图表”“可视化”“流程图”“架构图”。
+- 答案依赖 PDF 中的图、表、版式、公式、页面结构、截图、产品界面。
+- 多个对象需要比较，单纯文字会难读。
+- 需要解释流程、链路、系统架构、时间线、因果关系。
+- 需要提升可信度，让用户看到原文证据。
+
+不建议加图片的情况：
+
+- 问题可以用一两句话准确回答。
+- 图片只是装饰，不能增加证据或理解。
+- 检索证据不足，视觉化会放大不确定性。
+- 生成图会让事实看起来比证据更确定。
+
+### 2. 选择图片类型
+
+优先级如下：
+
+1. **原文引用图**：当知识库 PDF/新文档中已有图、表、页面截图，并且它直接支持结论。
+2. **生成渲染图**：当需要把多个证据重新组织为更易懂的图，例如对比表、流程图、时间线、指标图、决策树。
+3. **纯文字**：当没有可靠视觉证据，也没有足够结构化数据生成图。
+
+### 3. 决定图文组织方式
+
+每张图都必须绑定一个“视觉卡片”。视觉卡片包含：
+
+- visual_type：`source_visual` 或 `generated_visual`
+- title：这张图说明什么
+- purpose：为什么放这张图
+- basis：证据来源或生成依据
+- text_anchor：它支持回答中的哪一个结论
+- caveat：限制、不确定性或口径说明，可为空
+
+## 原文本 RAG + 独立视觉旁路的组合方式
+
+默认采用“两段检索、合并编排”：
+
+1. **文本 RAG 先召回**：使用原有知识库得到 answer draft、top chunks、doc_id、page、section。
+2. **视觉旁路反查**：用 query + top chunk doc_id/page + chunk text 关键词，在独立视觉索引中召回候选图。
+3. **候选图重排**：优先选择同 doc_id、同页或相邻页、有 caption、与文本结论匹配的图。
+4. **图文绑定**：每张图只绑定一个明确结论；无法绑定的图不展示。
+5. **生成图补充**：如果源图不足，但已有结构化事实适合解释，则生成 HTML/SVG/图表，并标注“基于当前信息整理”。
+
+视觉旁路推荐的最小 API：
+
+```json
+{
+  "query": "用户问题",
+  "text_hits": [
+    {"doc_id": "...", "page": 12, "chunk_text": "...", "score": 0.82}
+  ],
+  "filters": {"doc_id": "optional", "page_window": 1},
+  "top_k": 5
+}
+```
+
+返回：
+
+```json
+{
+  "visual_hits": [
+    {
+      "asset_id": "...",
+      "visual_type": "source_visual",
+      "asset_kind": "figure_crop|table_crop|page_render|embedded_image",
+      "doc_id": "...",
+      "page": 12,
+      "bbox": [72, 120, 520, 410],
+      "image_uri": "...",
+      "caption": "...",
+      "nearby_text": "...",
+      "visual_summary": "...",
+      "score": 0.76
+    }
+  ]
+}
+```
+
+## 输出组织模板
+
+优先使用下面的自然结构；不要机械填满所有小节。
+
+```markdown
+[直接回答用户问题的核心结论。]
+
+[视觉卡片 1：原文引用图或生成渲染图]
+说明：这张图用于证明/解释……
+来源/依据：doc_id / 文件名 / 页码 / chunk / 数据口径……
+
+[围绕图片展开的解释，说明用户应该看哪里、如何理解。]
+
+[必要时继续给出第二张视觉卡片。]
+
+补充说明：限制、缺失证据、下一步建议。
+```
+
+回答较长时，采用“结论先行 + 图文分块”的结构：
+
+```markdown
+## 结论
+...
+
+## 关键证据/可视化
+### 图 1：...
+[图片或图片占位]
+说明：...
+来源/依据：...
+
+## 解释
+...
+
+## 注意事项
+...
+```
+
+## 原文引用图方法
+
+当使用 PDF 或文档中的原图时：
+
+1. 优先引用最小但完整的视觉区域：单个图表 crop 优于整页截图；需要上下文时使用整页截图。
+2. 保留可追溯信息：文件名、doc_id、页码、图表编号、caption、bbox 或 asset_uri。
+3. 不要改写原图内容。可以在文字中解释，但不要把解释混入原图来源。
+4. 如果原图不清晰，说明“原图清晰度有限”，并用文字补充关键读数。
+5. 如果引用图只支持部分结论，明确说明它支持哪部分，不要扩大外推。
+
+推荐标注格式：
+
+```markdown
+**图：原文引用｜[图名]**
+来源：[文件名/doc_id]，[页码/图号/位置]
+这张图支持：[对应结论]
+```
+
+## 生成渲染图方法
+
+当使用 HTML/SVG/图表/流程图等生成图时：
+
+1. 先确定图的任务：比较、趋势、流程、层级、因果、架构、分布、决策路径。
+2. 只使用已检索到、用户提供或可明确计算的信息作为图中事实。
+3. 图中每个事实节点都应能回溯到文本证据或用户输入。
+4. 明确标注“生成渲染图”或“基于当前信息整理”。
+5. 不要把猜测、建议、风格化表达画成事实。
+6. 对数值图必须说明口径、单位、时间范围和是否经过估算。
+
+常用图型选择：
+
+- 对比关系：对比卡片、矩阵、二维表、雷达图。
+- 时间关系：时间线、阶段图、里程碑图。
+- 流程关系：流程图、泳道图、步骤卡。
+- 系统关系：架构图、模块关系图、数据流图。
+- 指标关系：柱状图、折线图、漏斗图、占比图。
+- 解释型总结：信息图卡片、三段式摘要图。
+
+推荐标注格式：
+
+```markdown
+**图：生成渲染｜[图名]**
+依据：[列出主要来源或用户输入]
+用途：[解释/比较/总结/推演]
+注意：[估算、缺失字段或不确定性]
+```
+
+## 回答编排规则
+
+- 每个核心结论后面最多跟 1 张最相关图片，避免“图片堆叠”。
+- 一次回答通常 1-3 张图足够；只有报告型任务才增加更多。
+- 图片顺序遵循用户理解路径：总览 → 证据 → 细节 → 建议。
+- 原文引用图靠近事实断言；生成渲染图靠近解释、总结或方案。
+- 先给结论，不要让用户必须看图才能知道答案。
+- 对不确定内容使用“可能、基于当前证据、尚未检索到”等措辞。
+
+## 可靠性检查
+
+发送最终答案前检查：
+
+- 是否每张图都有明确用途，而不是装饰？
+- 原文引用图是否有文件、页码或可追溯 ID？
+- 生成渲染图中的事实是否都有来源或来自用户输入？
+- 是否区分了“原文截图”和“生成示意”？
+- 是否避免了用生成图伪造原文证据？
+- 是否说明了关键限制，例如证据缺失、图片不清晰、数据口径不完整？
+- 是否让用户只读文字也能得到核心答案？
+
+## 示例
+
+### 示例 1：文本 RAG 命中页后反查图片
+
+用户问：“这份白皮书里 A 方案和 B 方案的性能差异是什么？图文说明。”
+
+合适做法：先用原文本 RAG 找到性能对比相关 chunk，拿到 doc_id 和 page；再用视觉旁路检索同 doc_id、同页或相邻页的图表 crop。如果找到图表，输出结论、引用该图，并说明应重点看横轴/纵轴/最高差值。不要重新生成一张看似原始数据的图，除非原图无法展示且数据已结构化抽取。
+
+### 示例 2：源图不足时生成流程图
+
+用户问：“基于这些材料，帮我说明新用户从注册到激活的路径。”
+
+合适做法：从 RAG 证据中抽取步骤，生成一张流程/泳道图，并标注“基于当前材料整理”。如果某一步没有来源，放入文字中的“待确认”，不要画成确定步骤。
+
+### 示例 3：混合图文
+
+用户问：“这个产品方案有哪些风险？最好图文并茂。”
+
+合适做法：先给三条核心风险；如果知识库中有架构图，引用原架构图标出风险对应模块；再生成一张风险矩阵，按照影响程度和发生概率组织。原架构图用于证据，风险矩阵用于解释。
+
+
+
+pdf-visual-sidecar.md
+# PDF Visual Sidecar: 独立 PDF 视觉旁路知识库方法论
+
+## 目标
+
+在不改变原文本 RAG 知识库的前提下，新增一套独立的 PDF 图片管理、解析、索引、检索和返回逻辑，专门服务图文问答里的“图”。
+
+这套逻辑应作为 sidecar 存在：
+
+- 原文本 KB 继续负责文本 chunk、文本 embedding、文本召回和事实回答。
+- Visual Sidecar 负责 PDF 页面渲染、图表/表格/图片 crop、caption/上下文绑定、视觉摘要、图片向量或文本索引、asset_uri 管理。
+- 回答阶段把两路结果合并：文本 RAG 给事实，视觉旁路给证据图或解释图素材。
+
+## 推荐整体架构
+
+```text
+PDF 原文
+  |
+  |-- 原文本 KB 原有链路：文本解析 -> chunk -> text embedding -> text retriever
+  |
+  `-- Visual Sidecar 新增链路：
+        1. pdf register
+        2. page render
+        3. visual asset extraction
+        4. metadata + caption + nearby text binding
+        5. optional VLM visual summary
+        6. visual index
+        7. visual retrieval API
+        8. answer composer
+```
+
+## 关键对象抽象
+
+### Document
+
+PDF 文件级元数据。
+
+```json
+{
+  "doc_id": "原文本 KB 中同一个 doc_id，或稳定映射 id",
+  "title": "文件标题",
+  "source_uri": "原始 PDF 存储地址",
+  "checksum": "PDF 内容 hash",
+  "page_count": 28,
+  "ingested_at": "2026-05-19T00:00:00Z"
+}
+```
+
+### Page Render
+
+每页的渲染图，用于版式、整页截图、兜底展示。
+
+```json
+{
+  "asset_id": "doc/page/0003",
+  "asset_kind": "page_render",
+  "doc_id": "...",
+  "page": 3,
+  "image_uri": "visual-kb/assets/doc/page_0003/page.png",
+  "width": 1240,
+  "height": 1754,
+  "dpi": 144
+}
+```
+
+### Visual Asset
+
+图表、表格、嵌入图片或页面局部 crop。
+
+```json
+{
+  "asset_id": "...",
+  "asset_kind": "figure_crop|table_crop|embedded_image|page_region|page_render",
+  "doc_id": "...",
+  "page": 3,
+  "bbox": [72.0, 120.0, 520.0, 410.0],
+  "image_uri": "...",
+  "caption": "Figure 2: ...",
+  "nearby_text": "...",
+  "visual_summary": "图中展示了...",
+  "source_text_refs": ["chunk_id_1", "chunk_id_2"],
+  "quality": {
+    "is_tiny_icon": false,
+    "ocr_confidence": null,
+    "caption_confidence": 0.7
+  }
+}
+```
+
+## 解析与存储支持
+
+### 1. PDF 注册
+
+需要把原 PDF 的 `doc_id`、文件 hash、页数、源文件地址写入 Visual Sidecar 的 document 表。这里不改原 KB，只建立映射。
+
+最低要求：
+
+- `doc_id` 必须能和文本 RAG 命中的 doc_id 对齐。
+- `source_uri` 或本地路径必须能用于重新渲染页面。
+- `checksum` 用于增量更新和去重。
+
+### 2. 页面渲染
+
+为每页生成低/中分辨率页面图。
+
+推荐：
+
+- 默认 144 dpi 作为问答展示和 crop 基准。
+- 重要文档可保存 72 dpi thumbnail + 144/200 dpi detail image。
+- 页面图不一定直接展示，但作为 crop 和兜底证据很重要。
+
+### 3. 视觉资产抽取
+
+至少支持三种资产：
+
+1. `page_render`：整页图，成本最低，能保留版式。
+2. `embedded_image` / `image_region`：PDF 内嵌图片或图片块区域。
+3. `table_crop` / `figure_crop`：由版面分析、规则或人工标注得到。
+
+最小实现可以先做：页面渲染 + PyMuPDF 图片块 bbox crop + caption 绑定。后续再接入版面模型识别 table/figure。
+
+### 4. Caption 与上下文绑定
+
+每个视觉资产都应绑定文字上下文，否则检索效果会很差。
+
+推荐字段：
+
+- `caption`：图题、表题、Figure/Table 编号。
+- `nearby_text`：bbox 上方、下方、左右临近文本。
+- `page_text`：整页文本，用于 FTS 兜底。
+- `section_title`：可由原文本 KB 或 PDF 目录补齐。
+- `source_text_refs`：可选，关联原文本 KB chunk_id。
+
+Caption 绑定优先级：
+
+1. 与 bbox 距离最近、包含 Figure/Fig./Table/图/表/Chart/Diagram 等模式的文本。
+2. bbox 下方文本优先于上方文本；很多论文和白皮书图题在图下方。
+3. 如果没有 caption，用同页标题/相邻段落作为弱上下文。
+
+### 5. 视觉摘要
+
+可选但强烈建议。对每个图表/页面 crop 调 VLM 生成短摘要：
+
+```json
+{
+  "visual_summary": "该图比较 A/B/C 三种方案在延迟和吞吐上的表现，A 在低负载下延迟最低。",
+  "visible_text": ["Latency", "Throughput", "A", "B", "C"],
+  "chart_type": "bar_chart",
+  "entities": ["A", "B", "C"]
+}
+```
+
+视觉摘要不要替代原图，只用于检索和排序。回答中若引用视觉摘要，应说明它来自模型解析，必要时让用户看到原图。
+
+## 索引设计
+
+最小可用索引采用“元数据过滤 + 文本检索”。后续再增强为多模态向量检索。
+
+### A. 元数据索引
+
+支持按以下字段过滤：
+
+- `doc_id`
+- `page`
+- `asset_kind`
+- `section_title`
+- `has_caption`
+- `quality.is_tiny_icon = false`
+
+### B. 文本索引
+
+把以下字段拼接建全文索引或 embedding：
+
+```text
+title + caption + nearby_text + visual_summary + visible_text + section_title + page_text
+```
+
+这个索引支持两类查询：
+
+- 直接从用户 query 搜图。
+- 根据文本 RAG 的 top chunks 反查同页/相邻页图片。
+
+### C. 图像向量索引，可选增强
+
+当文档里图片多、caption 少、问题高度视觉化时，增加图像向量：
+
+- CLIP / SigLIP：适合通用文本搜图。
+- ColPali / late interaction visual document retrieval：适合“把 PDF 页面当图片检索”。
+- 专用 chart/table VLM embedding：适合图表密集场景。
+
+### D. 混合排序
+
+推荐综合分数：
+
+```text
+score = 0.35 * text_similarity
+      + 0.25 * page_proximity
+      + 0.20 * caption_match
+      + 0.10 * visual_embedding_similarity
+      + 0.10 * quality_score
+```
+
+其中 `page_proximity` 来自文本 RAG 命中页：同页最高，相邻页次之，同文档其他页再次之。
+
+## 检索策略
+
+### 策略 1：文本命中页反查图片，默认首选
+
+适合已有文本 RAG 很可靠的场景。
+
+输入：用户 query + 文本 RAG top chunks。
+
+步骤：
+
+1. 取 top chunks 的 `doc_id/page/chunk_text`。
+2. 在视觉索引中过滤同 doc_id、page ± 1。
+3. 用 query + chunk keywords 在 caption/nearby_text/visual_summary 上检索。
+4. 返回 1-3 张最相关图片。
+
+优点：不改变原 RAG，准确率高，工程成本低。
+
+### 策略 2：视觉索引直接检索
+
+适合用户问“哪张图展示了架构/流程/性能曲线”。
+
+输入：用户 query。
+
+步骤：
+
+1. 对 caption/nearby_text/visual_summary 做文本检索。
+2. 如果有图像向量，对 query 做跨模态检索。
+3. 按 doc/page/asset_kind/quality 重排。
+
+### 策略 3：页面级视觉检索
+
+适合图文混排复杂、传统解析损失严重的 PDF。
+
+做法：把每页渲染图作为检索单位，用视觉文档检索模型或页面摘要索引。召回页面后再裁剪局部区域。
+
+### 策略 4：生成渲染图兜底
+
+当视觉旁路没有找到源图，但文本 RAG 已经有足够结构化事实时，生成解释图。必须标注为 generated visual。
+
+## API 建议
+
+### Ingest API
+
+```http
+POST /visual-kb/ingest
+```
+
+```json
+{
+  "doc_id": "kb_doc_123",
+  "title": "产品白皮书.pdf",
+  "pdf_uri": "s3://bucket/path/file.pdf",
+  "options": {
+    "render_dpi": 144,
+    "extract_images": true,
+    "extract_tables": false,
+    "generate_visual_summary": true
+  }
+}
+```
+
+### Search API
+
+```http
+POST /visual-kb/search
+```
+
+```json
+{
+  "query": "A 方案和 B 方案的性能差异",
+  "text_hits": [
+    {"doc_id": "kb_doc_123", "page": 8, "chunk_text": "A 方案在吞吐上..."}
+  ],
+  "filters": {"asset_kind": ["figure_crop", "table_crop", "page_render"]},
+  "top_k": 3
+}
+```
+
+### Fetch API
+
+```http
+GET /visual-kb/assets/{asset_id}
+```
+
+返回图片二进制或带签名的 `image_uri`。
+
+### Explain API，可选
+
+```http
+POST /visual-kb/explain-hit
+```
+
+用于返回为什么这张图被选中：query 命中词、caption、同页文本证据、排序分数。
+
+## 工程落地优先级
+
+### MVP
+
+- 独立 PDF registry。
+- 每页渲染 page image。
+- 抽取图片块 bbox 并 crop。
+- 绑定 caption/nearby_text/page_text。
+- SQLite/Postgres FTS 或 Elasticsearch 文本索引。
+- Search API 支持 query + doc_id/page 过滤。
+- 回答层支持 source visual 卡片。
+
+### V1
+
+- 接入版面分析，区分 figure/table/formula/image/logo。
+- VLM 生成 visual_summary、visible_text、chart_type。
+- 建立 source_text_refs，把视觉 asset 与原文本 chunk_id 松耦合关联。
+- 支持 page ± N 反查和多图重排。
+
+### V2
+
+- 增加 CLIP/SigLIP/ColPali 等视觉向量。
+- 支持页面级视觉检索 + region grounding。
+- 支持人工审核/标注高价值图片。
+- 支持缓存签名 URL、权限控制和多租户隔离。
+
+## 不建议做的事
+
+- 不要把图片 OCR 文本直接塞回原文本 KB，除非明确需要；否则会污染原 RAG 的召回语义。
+- 不要只保存图片文件而不保存 caption、page、bbox、doc_id；这样无法可靠追溯。
+- 不要用生成图冒充源图。
+- 不要一次返回大量图片；图文问答应重视“最相关的少量证据”。
+- 不要把 VLM 视觉摘要当作绝对事实；摘要是检索辅助，原图和原文仍是证据。
+
+## 最小参考实现
+
+`../scripts/visual_pdf_kb.py` 是一个单文件参考实现，适合验证 MVP：
+
+- `ingest`：解析 PDF，保存页面图、图片区域 crop、元数据和 SQLite FTS 索引。
+- `search`：根据 query、doc_id、page 过滤召回图片候选。
+- `show`：按 asset_id 输出完整元数据。
+
+它不是生产级服务，但可作为后端 API 的原型。
+
+
+查看最小参考实现脚本
+
+这次扩展的核心判断
+
+你现在的文本 RAG 不应该被强行改造成多模态 RAG。更稳的方式是做一个独立旁路：
+
+原有文本 RAG：
+PDF -> 文本解析 -> chunk -> text embedding -> 文本召回 -> 文字答案
+
+新增视觉 Sidecar：
+PDF -> 页面渲染/图片裁剪 -> 图片元数据/caption/上下文 -> 视觉索引 -> 图片召回
+
+回答层：
+文本 RAG 负责事实结论
+视觉 Sidecar 负责找到相关原图
+LLM 负责把文字结论和图片证据组织成图文回答
+
+这样好处是：
+
+不污染原来的文本 chunk 和 embedding。
+不需要一次性重构知识库。
+可以先做最小可用版本，再逐步升级到 VLM/CLIP/ColPali。
+文本证据和视觉证据可以独立评估、独立回滚、独立扩展。
+需要新增的支持
+1. PDF 文件注册与映射
+
+视觉库需要知道每个 PDF 和原文本 KB 的关系。
+
+最小字段：
+
+{
+  "doc_id": "和原文本知识库一致的 doc_id",
+  "title": "文件标题",
+  "source_uri": "PDF 原始存储路径",
+  "checksum": "PDF hash",
+  "page_count": 28
+}
+
+关键点是 doc_id 必须能和原文本 RAG 召回结果对齐。文本 RAG 命中 doc_id + page 后，视觉 Sidecar 就能反查同页或相邻页图片。
+
+2. 页面渲染
+
+每页 PDF 要能渲染成图片，作为整页视觉证据和后续 crop 的基础。PyMuPDF 官方文档支持用 page.get_pixmap() 渲染页面，也支持通过 dpi 提升分辨率、通过 clip 渲染页面局部区域。这个能力很适合做 page render 和 figure/table crop。
+
+建议保存：
+
+assets/{doc_id}/page_0001/page.png
+assets/{doc_id}/page_0001/image_001.png
+assets/{doc_id}/page_0001/table_001.png
+3. 视觉资产抽取
+
+最小实现先支持两类资产：
+
+page_render：整页截图
+embedded_image_region：PDF 中的图片块 crop
+
+后续再扩展：
+
+figure_crop
+table_crop
+chart_crop
+formula_crop
+architecture_diagram
+screenshot_region
+
+PyMuPDF 可以通过 page.get_text("dict") 取得页面中的 image block，并拿到 bbox、图片类型、大小等元数据；这适合做轻量 MVP。
+
+4. Caption 和 nearby_text 绑定
+
+图片本身很难检索，必须绑定文字上下文。
+
+每个 visual asset 建议保存：
+
+{
+  "caption": "Figure 2: ...",
+  "nearby_text": "图片附近的段落或说明",
+  "page_text": "整页文本",
+  "section_title": "章节标题",
+  "source_text_refs": ["可选，对应原文本 KB 的 chunk_id"]
+}
+
+这个设计可以让视觉库先用普通全文索引/embedding 检索，而不是一开始就上复杂多模态向量。
+
+5. 独立视觉索引
+
+MVP 先做：
+
+SQLite FTS / Postgres FTS / Elasticsearch / OpenSearch
+
+索引字段：
+
+title + caption + nearby_text + visual_summary + visible_text + section_title + page_text
+
+升级版再做：
+
+CLIP / SigLIP 图片向量
+ColPali 页面级视觉检索
+VLM 生成 visual_summary
+版面分析模型区分 figure/table/chart/logo
+
+ColPali 这类方案的核心思想是直接把文档页面作为图像来做视觉文档检索，避免传统文本抽取丢失图表、布局、字体等视觉信息；论文摘要也明确指出它用 VLM 生成页面图像的 multi-vector embeddings，并用于文档检索。 VisRAG 也是相似方向：不先把文档解析成文本，而是直接用 VLM 对文档图像做 embedding 和检索，以保留原始多模态信息。
+
+6. 检索 API
+
+推荐视觉旁路提供一个独立接口：
+
+POST /visual-kb/search
+
+输入：
+
+{
+  "query": "A 方案和 B 方案的性能差异",
+  "text_hits": [
+    {
+      "doc_id": "kb_doc_123",
+      "page": 8,
+      "chunk_text": "A 方案在吞吐上..."
+    }
+  ],
+  "filters": {
+    "asset_kind": ["figure_crop", "table_crop", "page_render"]
+  },
+  "top_k": 3
+}
+
+返回：
+
+{
+  "visual_hits": [
+    {
+      "asset_id": "xxx",
+      "visual_type": "source_visual",
+      "asset_kind": "figure_crop",
+      "doc_id": "kb_doc_123",
+      "page": 8,
+      "bbox": [72, 120, 520, 410],
+      "image_uri": "s3://...",
+      "caption": "Figure 2: ...",
+      "nearby_text": "...",
+      "visual_summary": "...",
+      "score": 0.76
+    }
+  ]
+}
+7. 回答层合并逻辑
+
+默认使用“两段检索”：
+
+1. 原文本 RAG 先回答：拿到文本证据、doc_id、page、chunk。
+2. 视觉 Sidecar 反查：用 query + doc_id + page ± 1 找图片。
+3. 图片重排：同页 > 相邻页；有 caption > 无 caption；figure/table > page render。
+4. LLM 编排：把图片绑定到具体结论。
+
+MultiFinRAG 这类现成研究也采用类似思想：先抽取 table/figure 图片，用多模态模型生成结构化 JSON 和简短摘要，再把这些结果和文本一起 embedding/index，并在回答时从 text-only 动态升级到 text+table+image。
+
+可借鉴的现成方案
+PyMuPDF
+
+适合 MVP 的 PDF 页面渲染、图片块提取、局部 crop。它轻量、直接、工程接入成本低。官方文档说明可用 page.get_pixmap() 渲染整页，也可以通过 clip 渲染页面局部区域。
+
+Unstructured
+
+适合做文档元素级解析。它的 PDF partition 支持 fast、hi_res、ocr_only 等策略；其中 hi_res 会使用文档布局信息，适合对元素分类敏感的场景。 Unstructured 也有文档图片和表格抽取示例，支持从输出 JSON 的 image_base64 里还原图片或表格视觉元素。
+
+Docling
+
+适合比 PyMuPDF 更结构化的文档转换。Docling 是开源文档转换工具，可以把多种文档格式解析成统一的结构化表示，并使用布局分析和表格结构识别模型；它也提供 Python API 和 CLI，适合后续替换或增强解析层。
+
+ColPali / VisRAG
+
+适合 V2 阶段，也就是页面级视觉检索。ColPali 强调直接嵌入文档页面图像，VisRAG 强调用 VLM 直接处理文档图像，从而减少传统文本解析造成的视觉信息损失。
+
+我已经放进 Skill 的基本实现
+
+这次 Skill 包里新增了一个单文件参考实现：
+
+multimodal-rag-answering/scripts/visual_pdf_kb.py
+
+它实现了一个独立 Visual Sidecar MVP：
+
+PDF -> page render -> image region crop -> metadata -> SQLite FTS -> search
+
+支持命令：
+
+python scripts/visual_pdf_kb.py ingest \
+  --pdf ./whitepaper.pdf \
+  --out ./visual_kb \
+  --doc-id kb_doc_123 \
+  --title "Whitepaper" \
+  --overwrite
+
+检索：
+
+python scripts/visual_pdf_kb.py search \
+  --out ./visual_kb \
+  --query "A 方案和 B 方案的性能差异" \
+  --doc-id kb_doc_123 \
+  --pages 8 \
+  --page-window 1 \
+  --top-k 3
+
+查看索引统计：
+
+python scripts/visual_pdf_kb.py stats --out ./visual_kb
+
+这个脚本会生成类似结构：
+
+visual_kb/
+├── index.sqlite
+├── manifest.jsonl
+└── assets/
+    └── kb_doc_123/
+        └── page_0008/
+            ├── page.png
+            └── image_001.png
+
+我也已经用一个临时 PDF 做过基本验证：脚本可以成功解析 PDF、生成整页图、裁剪内嵌图片、写入 SQLite 索引，并通过 query 检索出相关图片候选。
+
+更新后的 Skill 内容
+
+这次 Skill 增加了三类内容：
+
+multimodal-rag-answering/
+├── SKILL.md
+├── agents/
+│   └── openai.yaml
+├── references/
+│   └── pdf-visual-sidecar.md
+└── scripts/
+    ├── visual_pdf_kb.py
+    └── requirements.txt
+
+其中：
+
+SKILL.md：更新了图文回答编排逻辑，新增“原文本 RAG + 独立视觉旁路”的组合方式。
+references/pdf-visual-sidecar.md：完整写入视觉旁路知识库的方法论、对象模型、存储字段、检索 API、MVP/V1/V2 演进路线。
+scripts/visual_pdf_kb.py：一个可运行的最小参考实现。
+requirements.txt：仅依赖 pymupdf。
+
+最终包已校验通过并重新打包为：
+下载更新后的 skill.zip

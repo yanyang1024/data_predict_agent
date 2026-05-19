@@ -1,0 +1,3 @@
+interface:
+  display_name: "Multimodal RAG Answering"
+  short_description: "Plan source-grounded image-and-text answers for RAG and document QA."
