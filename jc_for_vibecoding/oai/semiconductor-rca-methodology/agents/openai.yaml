@@ -1,0 +1,3 @@
+interface:
+  display_name: "Semiconductor RCA Methodology"
+  short_description: "methodology-first root cause analysis for semiconductor fab data"
