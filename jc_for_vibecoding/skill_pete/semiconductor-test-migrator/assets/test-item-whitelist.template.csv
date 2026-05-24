@@ -1,0 +1,2 @@
+test_item_id,aliases,required,source_spec,owner,notes
+EXAMPLE_TEST_ID,"alias1|alias2",yes,product_spec_v0,pete_owner,replace with real whitelist row

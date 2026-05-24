@@ -1,0 +1,5 @@
+interface:
+  display_name: "Semiconductor Test Migrator"
+  short_description: "Safe PETE C/C++ test-code migration with whitelist, parameter, and traceability workflows."
+  icon: "chip"
+  theme_color: "#4f46e5"

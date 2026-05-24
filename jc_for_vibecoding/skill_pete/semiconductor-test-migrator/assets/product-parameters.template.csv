@@ -1,0 +1,2 @@
+product,revision,test_item_id,parameter_name,value,unit,precision,bin,datalog_name,source_of_truth,review_required
+EXAMPLE_PRODUCT,A0,EXAMPLE_TEST_ID,limit_high,1.23,V,0.001,BIN1,EXAMPLE_DATALOG,product_spec_v0,yes

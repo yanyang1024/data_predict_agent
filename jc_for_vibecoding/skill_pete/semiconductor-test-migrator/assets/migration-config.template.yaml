@@ -1,0 +1,35 @@
+migration:
+  case_id: ""
+  source_product: ""
+  target_product: ""
+  source_tester_platform: ""
+  target_tester_platform: ""
+  source_branch_or_commit: ""
+  target_branch: ""
+
+inputs:
+  entry_files:
+    - flow.c
+    - efa
+  whitelist_path: "assets/test-item-whitelist.template.csv"
+  product_parameter_path: "assets/product-parameters.template.csv"
+  tester_pattern_reference: "references/tester-patterns-<machine>.md"
+
+policy:
+  deletion_rule: "delete only when not whitelisted and not supporting any whitelisted item"
+  require_reverse_reachability: true
+  require_before_after_manifest: true
+  human_review_required_for:
+    - shared helpers
+    - classes and virtual methods
+    - callbacks and exported APIs
+    - macros and generated symbols
+    - limits, units, bins, and datalog names
+    - tester setup/teardown sequence
+
+outputs:
+  case_folder: "migration_runs/<case_id>/"
+  change_log: "change_log.md"
+  review_checklist: "review_checklist.md"
+  test_item_map: "test_item_map.csv"
+  parameter_update_map: "parameter_update_map.csv"
