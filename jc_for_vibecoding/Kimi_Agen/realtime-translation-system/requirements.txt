@@ -1,0 +1,23 @@
+# 实时语音转录翻译系统依赖
+
+# ASR (核心依赖)
+qwen-asr[vllm]>=0.1.0
+flash-attn>=2.5.0; sys_platform == 'linux'
+
+# Web 框架
+fastapi>=0.110.0
+uvicorn[standard]>=0.27.0
+websockets>=12.0
+
+# 翻译
+openai>=1.12.0
+
+# 音频处理
+numpy>=1.26.0
+soundfile>=0.12.0
+
+# 可选: 麦克风输入
+# sounddevice>=0.4.6
+
+# 可选: 音频重采样
+# librosa>=0.10.0

@@ -1,0 +1,46 @@
+# 实时语音转录翻译系统配置
+
+# ASR 配置
+asr:
+  model_path: "Qwen/Qwen3-ASR-1.7B"
+  gpu_memory_utilization: 0.6
+  max_new_tokens: 32
+  dtype: "bfloat16"
+
+  # 流式识别参数
+  streaming:
+    chunk_ms: 500              # 每 500ms 处理一次
+    unfixed_chunk_num: 2       # 不固定块数
+    unfixed_token_num: 5       # 不固定 token 数
+    chunk_size_sec: 2.0        # 块大小(秒)
+
+# 翻译配置
+translation:
+  api_base: "http://localhost:8000/v1"   # OpenAI 兼容 API 地址
+  model: "default"                        # 模型名称
+  max_context_segments: 3                 # 上下文窗口大小
+  temperature: 0.3                        # 翻译温度
+  max_concurrent: 2                       # 最大并发翻译数
+
+# VAD 配置
+vad:
+  threshold: 0.02                         # 能量阈值
+  min_silence_ms: 400                     # 最小静音时间(确认句子)
+  min_speech_ms: 250                      # 最小语音时间
+
+# 句子切分配置
+segmentation:
+  sentence_end_punctuation: "。！？.!?；;"
+  max_duration_sec: 10.0                  # 最大句子长度
+
+# 服务器配置
+server:
+  host: "0.0.0.0"
+  port: 8080
+  log_level: "info"
+
+# 音频配置
+audio:
+  sample_rate: 16000
+  channels: 1
+  chunk_duration_ms: 100                  # 前端采集 chunk 大小
