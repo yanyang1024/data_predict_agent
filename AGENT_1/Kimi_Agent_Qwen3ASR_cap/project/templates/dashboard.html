@@ -1,0 +1,1024 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>实时语音翻译字幕</title>
+    <style>
+        /* ================================================================
+           基础重置与深色主题变量
+           ================================================================ */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            /* GitHub Dark 配色方案 */
+            --bg-primary: #0d1117;
+            --bg-secondary: #161b22;
+            --bg-tertiary: #21262d;
+            --border-color: #30363d;
+            --text-primary: #e6edf3;
+            --text-secondary: #8b949e;
+            --text-muted: #484f58;
+            --accent-green: #3fb950;
+            --accent-red: #f85149;
+            --accent-yellow: #d29922;
+            --accent-blue: #58a6ff;
+            --btn-primary-bg: #238636;
+            --btn-primary-hover: #2ea043;
+            --btn-danger-bg: #da3633;
+            --btn-danger-hover: #f85149;
+            --seg-final-bg: rgba(48, 54, 61, 0.5);
+            --seg-pending-bg: rgba(48, 54, 61, 0.2);
+        }
+
+        body {
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC',
+                         'PingFang SC', 'Microsoft YaHei', sans-serif;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden; /* 防止整体滚动，内容由内部容器处理 */
+        }
+
+        /* ================================================================
+           头部
+           ================================================================ */
+        .header {
+            padding: 16px 24px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--bg-secondary);
+            flex-shrink: 0;
+        }
+
+        .header h1 {
+            font-size: 18px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .header-icon {
+            font-size: 22px;
+            line-height: 1;
+        }
+
+        /* 连接状态指示器 */
+        .status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            transition: background 0.3s ease;
+        }
+
+        .status-dot.connected {
+            background: var(--accent-green);
+            box-shadow: 0 0 6px rgba(63, 185, 80, 0.4);
+        }
+
+        .status-dot.disconnected {
+            background: var(--accent-red);
+        }
+
+        .status-dot.processing {
+            background: var(--accent-yellow);
+            animation: pulse 1.2s ease infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+            50% {
+                opacity: 0.5;
+                transform: scale(0.85);
+            }
+        }
+
+        /* ================================================================
+           主内容区
+           ================================================================ */
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 20px 24px;
+            gap: 14px;
+            overflow: hidden;
+            min-height: 0;
+        }
+
+        /* ================================================================
+           字幕显示容器
+           ================================================================ */
+        .subtitle-container {
+            flex: 1;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 20px 24px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+        }
+
+        .subtitle-container.chinese-panel {
+            flex: 0.35;
+        }
+
+        .subtitle-label {
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1.2px;
+            color: var(--text-secondary);
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-shrink: 0;
+        }
+
+        /* ================================================================
+           英文字幕显示区
+           ================================================================ */
+        .english-display {
+            font-size: 26px;
+            line-height: 1.6;
+            font-weight: 500;
+            color: var(--text-primary);
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        .english-display .seg {
+            margin-bottom: 10px;
+            padding: 10px 14px;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            animation: fadeIn 0.4s ease;
+            word-break: break-word;
+        }
+
+        .english-display .seg.final {
+            background: var(--seg-final-bg);
+            border-left: 3px solid var(--accent-green);
+        }
+
+        .english-display .seg.pending {
+            background: var(--seg-pending-bg);
+            font-style: italic;
+            opacity: 0.75;
+            border-left: 3px solid var(--accent-yellow);
+        }
+
+        .english-display .seg.pending.updating {
+            animation: highlight 0.5s ease;
+        }
+
+        /* ================================================================
+           中文字幕显示区
+           ================================================================ */
+        .chinese-display {
+            font-size: 15px;
+            line-height: 1.55;
+            color: var(--text-secondary);
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        .chinese-display .seg {
+            margin-bottom: 6px;
+            padding: 6px 10px;
+            border-radius: 6px;
+            transition: all 0.3s ease;
+            animation: fadeIn 0.35s ease;
+            word-break: break-word;
+        }
+
+        .chinese-display .seg.final {
+            background: var(--seg-final-bg);
+        }
+
+        .chinese-display .seg.pending {
+            font-style: italic;
+            opacity: 0.6;
+            background: var(--seg-pending-bg);
+        }
+
+        /* ================================================================
+           动画
+           ================================================================ */
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(8px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes highlight {
+            from {
+                background: rgba(56, 139, 253, 0.35);
+            }
+            to {
+                background: var(--seg-pending-bg);
+            }
+        }
+
+        /* 新段落的特殊高亮效果 */
+        @keyframes newSegHighlight {
+            0% {
+                background: rgba(56, 139, 253, 0.25);
+            }
+            100% {
+                background: var(--seg-final-bg);
+            }
+        }
+
+        .seg.new-final {
+            animation: fadeIn 0.4s ease, newSegHighlight 1.5s ease forwards;
+        }
+
+        /* ================================================================
+           空状态
+           ================================================================ */
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: var(--text-muted);
+            gap: 14px;
+            text-align: center;
+        }
+
+        .empty-state svg {
+            width: 52px;
+            height: 52px;
+            opacity: 0.45;
+        }
+
+        .empty-state p {
+            font-size: 15px;
+            line-height: 1.5;
+        }
+
+        .empty-state .hint {
+            font-size: 13px;
+            opacity: 0.7;
+        }
+
+        /* ================================================================
+           控制按钮区
+           ================================================================ */
+        .controls {
+            display: flex;
+            gap: 14px;
+            justify-content: center;
+            padding: 14px 24px;
+            flex-shrink: 0;
+        }
+
+        .btn {
+            padding: 12px 28px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            font-size: 15px;
+            font-weight: 500;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s ease;
+            outline: none;
+            user-select: none;
+        }
+
+        .btn:hover {
+            background: var(--border-color);
+        }
+
+        .btn:active {
+            transform: scale(0.97);
+        }
+
+        .btn:disabled {
+            opacity: 0.45;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-primary {
+            background: var(--btn-primary-bg);
+            border-color: var(--btn-primary-bg);
+            color: #ffffff;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            background: var(--btn-primary-hover);
+            border-color: var(--btn-primary-hover);
+        }
+
+        .btn-danger {
+            background: var(--btn-danger-bg);
+            border-color: var(--btn-danger-bg);
+            color: #ffffff;
+        }
+
+        .btn-danger:hover:not(:disabled) {
+            background: var(--btn-danger-hover);
+            border-color: var(--btn-danger-hover);
+        }
+
+        .btn svg {
+            width: 16px;
+            height: 16px;
+        }
+
+        /* ================================================================
+           信息栏
+           ================================================================ */
+        .info-bar {
+            display: flex;
+            gap: 16px;
+            font-size: 13px;
+            color: var(--text-secondary);
+            padding: 0 24px 14px;
+            flex-shrink: 0;
+        }
+
+        .info-bar span {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .info-bar .separator {
+            color: var(--text-muted);
+        }
+
+        /* ================================================================
+           滚动条样式 (WebKit)
+           ================================================================ */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--text-muted);
+        }
+
+        /* ================================================================
+           响应式适配
+           ================================================================ */
+        @media (max-width: 768px) {
+            .header {
+                padding: 12px 16px;
+            }
+
+            .header h1 {
+                font-size: 16px;
+            }
+
+            .main-content {
+                padding: 12px;
+                gap: 10px;
+            }
+
+            .subtitle-container {
+                padding: 14px 16px;
+            }
+
+            .english-display {
+                font-size: 20px;
+            }
+
+            .chinese-display {
+                font-size: 13px;
+            }
+
+            .controls {
+                padding: 10px 16px;
+            }
+
+            .btn {
+                padding: 10px 20px;
+                font-size: 14px;
+            }
+
+            .info-bar {
+                padding: 0 16px 10px;
+                font-size: 12px;
+            }
+        }
+
+        /* ================================================================
+           麦克风音量可视化 (录音时显示)
+           ================================================================ */
+        .audio-viz {
+            display: none;
+            align-items: center;
+            gap: 3px;
+            height: 20px;
+            padding: 0 4px;
+        }
+
+        .audio-viz.active {
+            display: flex;
+        }
+
+        .audio-bar {
+            width: 3px;
+            background: var(--accent-green);
+            border-radius: 2px;
+            animation: soundBar 0.5s ease infinite alternate;
+        }
+
+        .audio-bar:nth-child(1) { animation-delay: 0.0s; height: 30%; }
+        .audio-bar:nth-child(2) { animation-delay: 0.1s; height: 60%; }
+        .audio-bar:nth-child(3) { animation-delay: 0.2s; height: 45%; }
+        .audio-bar:nth-child(4) { animation-delay: 0.15s; height: 80%; }
+        .audio-bar:nth-child(5) { animation-delay: 0.05s; height: 50%; }
+
+        @keyframes soundBar {
+            0% { transform: scaleY(0.3); opacity: 0.5; }
+            100% { transform: scaleY(1); opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <!-- ==================== 头部 ==================== -->
+    <div class="header">
+        <h1>
+            <span class="header-icon">&#x1F399;</span>
+            实时语音翻译字幕
+        </h1>
+        <div class="status">
+            <!-- 音频可视化指示器 -->
+            <div class="audio-viz" id="audio-viz">
+                <div class="audio-bar"></div>
+                <div class="audio-bar"></div>
+                <div class="audio-bar"></div>
+                <div class="audio-bar"></div>
+                <div class="audio-bar"></div>
+            </div>
+            <span class="status-dot disconnected" id="status-dot"></span>
+            <span id="status-text">未连接</span>
+        </div>
+    </div>
+
+    <!-- ==================== 主内容 ==================== -->
+    <div class="main-content">
+        <!-- 英文字幕显示区 -->
+        <div class="subtitle-container">
+            <div class="subtitle-label">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"/>
+                    <path d="M2 12h20"/>
+                    <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+                </svg>
+                English Translation
+            </div>
+            <div class="english-display" id="english-display">
+                <div class="empty-state">
+                    <!-- 麦克风 SVG 图标 -->
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/>
+                        <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                        <line x1="12" y1="19" x2="12" y2="22"/>
+                    </svg>
+                    <p>点击"开始录音"开始实时翻译</p>
+                    <span class="hint">请允许浏览器使用麦克风权限</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 中文字幕显示区 -->
+        <div class="subtitle-container chinese-panel">
+            <div class="subtitle-label">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M4 7V4h16v3"/>
+                    <path d="M9 20h6"/>
+                    <path d="M12 4v16"/>
+                </svg>
+                中文原文
+            </div>
+            <div class="chinese-display" id="chinese-display">
+                <!-- 初始为空 -->
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== 控制按钮 ==================== -->
+    <div class="controls">
+        <button class="btn btn-primary" id="btn-start" onclick="startRecording()">
+            <!-- 麦克风图标 -->
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/>
+                <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                <line x1="12" y1="19" x2="12" y2="22"/>
+            </svg>
+            开始录音
+        </button>
+        <button class="btn btn-danger" id="btn-stop" onclick="stopRecording()" disabled>
+            <!-- 方块停止图标 -->
+            <svg viewBox="0 0 24 24" fill="currentColor" stroke="none">
+                <rect x="6" y="6" width="12" height="12" rx="2"/>
+            </svg>
+            停止录音
+        </button>
+    </div>
+
+    <!-- ==================== 信息栏 ==================== -->
+    <div class="info-bar">
+        <span id="info-asr">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/>
+                <polyline points="12 6 12 12 16 14"/>
+            </svg>
+            ASR: 等待启动
+        </span>
+        <span class="separator">|</span>
+        <span id="info-segments">段落: 0</span>
+        <span class="separator">|</span>
+        <span id="info-latency">延迟: -- ms</span>
+    </div>
+
+    <!-- ==================== Socket.IO 客户端 ==================== -->
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        // ================================================================
+        // 全局状态
+        // ================================================================
+        const socket = io();
+        let isRecording = false;
+        let segments = [];  // {id, chinese, english, is_final}
+
+        // Web Audio API 相关
+        let audioContext = null;
+        let mediaStream = null;
+        let processorNode = null;
+        let sourceNode = null;
+
+        // 性能追踪
+        let lastUpdateTime = 0;
+
+        // ================================================================
+        // Socket.IO 事件处理
+        // ================================================================
+
+        /**
+         * 连接建立时的处理
+         */
+        socket.on('connect', () => {
+            updateStatus('connected', '已连接');
+            logInfo('WebSocket 连接成功');
+        });
+
+        /**
+         * 连接断开时的处理
+         */
+        socket.on('disconnect', () => {
+            updateStatus('disconnected', '已断开');
+            // 如果正在录音，自动停止
+            if (isRecording) {
+                stopRecordingLocal();
+            }
+        });
+
+        /**
+         * 服务器确认连接
+         */
+        socket.on('connected', (data) => {
+            logInfo('服务器:', data.message);
+        });
+
+        /**
+         * 录音开始确认
+         */
+        socket.on('recording_started', () => {
+            clearSubtitles();
+            isRecording = true;
+            setButtonState('recording');
+            updateStatus('processing', '录音中...');
+            showAudioViz(true);
+            updateInfo();
+            logInfo('录音已开始');
+        });
+
+        /**
+         * 录音停止确认
+         */
+        socket.on('recording_stopped', () => {
+            isRecording = false;
+            setButtonState('stopped');
+            updateStatus('connected', '已连接');
+            showAudioViz(false);
+            updateInfo();
+            logInfo('录音已停止');
+        });
+
+        /**
+         * 字幕更新（核心数据推送）
+         */
+        socket.on('subtitle_update', (data) => {
+            if (data.changes && Array.isArray(data.changes)) {
+                updateSubtitles(data.changes);
+            }
+        });
+
+        /**
+         * 错误处理
+         */
+        socket.on('error', (data) => {
+            logError('服务器错误:', data.message || '未知错误');
+        });
+
+        socket.on('connect_error', (err) => {
+            updateStatus('disconnected', '连接失败');
+            logError('连接错误:', err.message);
+        });
+
+        // ================================================================
+        // UI 更新函数
+        // ================================================================
+
+        /**
+         * 更新连接状态指示器
+         */
+        function updateStatus(type, text) {
+            const dot = document.getElementById('status-dot');
+            const label = document.getElementById('status-text');
+
+            // 移除所有状态类
+            dot.classList.remove('connected', 'disconnected', 'processing');
+            // 添加新状态类
+            dot.classList.add(type);
+            label.textContent = text;
+        }
+
+        /**
+         * 控制音频可视化指示器显示
+         */
+        function showAudioViz(show) {
+            const viz = document.getElementById('audio-viz');
+            viz.classList.toggle('active', show);
+        }
+
+        /**
+         * 设置按钮状态
+         */
+        function setButtonState(state) {
+            const btnStart = document.getElementById('btn-start');
+            const btnStop = document.getElementById('btn-stop');
+
+            if (state === 'recording') {
+                btnStart.disabled = true;
+                btnStop.disabled = false;
+            } else {
+                btnStart.disabled = false;
+                btnStop.disabled = true;
+            }
+        }
+
+        // ================================================================
+        // 字幕管理
+        // ================================================================
+
+        /**
+         * 处理字幕变更列表，更新本地段落状态
+         */
+        function updateSubtitles(changes) {
+            let hasNew = false;
+
+            for (const change of changes) {
+                const idx = segments.findIndex(s => s.id === change.id);
+                if (idx >= 0) {
+                    // 标记是否为新确定的段落（final 状态变化）
+                    const wasPending = !segments[idx].is_final;
+                    const nowFinal = change.is_final;
+                    segments[idx] = change;
+                    if (wasPending && nowFinal) {
+                        segments[idx]._justFinalized = true;
+                    }
+                } else {
+                    segments.push(change);
+                    hasNew = true;
+                }
+            }
+
+            // 按 ID 排序保持时间顺序
+            segments.sort((a, b) => a.id - b.id);
+
+            renderSubtitles();
+            updateInfo();
+
+            // 计算延迟
+            const now = Date.now();
+            if (lastUpdateTime > 0) {
+                const latency = now - lastUpdateTime;
+                document.getElementById('info-latency').textContent =
+                    `延迟: ${latency} ms`;
+            }
+            lastUpdateTime = now;
+        }
+
+        /**
+         * 渲染字幕到 DOM
+         */
+        function renderSubtitles() {
+            const engEl = document.getElementById('english-display');
+            const cnEl = document.getElementById('chinese-display');
+
+            // 空状态处理
+            if (segments.length === 0) {
+                engEl.innerHTML = createEmptyStateHTML();
+                cnEl.innerHTML = '';
+                return;
+            }
+
+            // 只显示最近 8 段，避免 DOM 过大
+            const recent = segments.slice(-8);
+
+            // 渲染英文字幕
+            engEl.innerHTML = recent.map(s => {
+                const isNewFinal = s._justFinalized;
+                // 清除一次性标记
+                if (s._justFinalized) delete s._justFinalized;
+
+                const cssClass = s.is_final
+                    ? (isNewFinal ? 'seg final new-final' : 'seg final')
+                    : 'seg pending';
+                return `<div class="${cssClass}" data-id="${s.id}">${escapeHtml(s.english)}</div>`;
+            }).join('');
+
+            // 渲染中文字幕
+            cnEl.innerHTML = recent.map(s =>
+                `<div class="seg ${s.is_final ? 'final' : 'pending'}" data-id="${s.id}">${escapeHtml(s.chinese)}</div>`
+            ).join('');
+
+            // 自动滚动到底部
+            scrollToBottom(engEl);
+            scrollToBottom(cnEl);
+        }
+
+        /**
+         * 安全滚动到底部
+         */
+        function scrollToBottom(el) {
+            // 使用 requestAnimationFrame 确保在 DOM 更新后滚动
+            requestAnimationFrame(() => {
+                el.scrollTop = el.scrollHeight;
+            });
+        }
+
+        /**
+         * 创建空状态 HTML
+         */
+        function createEmptyStateHTML() {
+            return `<div class="empty-state">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/>
+                    <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                    <line x1="12" y1="19" x2="12" y2="22"/>
+                </svg>
+                <p>等待语音输入...</p>
+            </div>`;
+        }
+
+        /**
+         * 清空所有字幕
+         */
+        function clearSubtitles() {
+            segments = [];
+            renderSubtitles();
+            updateInfo();
+            lastUpdateTime = 0;
+        }
+
+        /**
+         * 更新信息栏统计
+         */
+        function updateInfo() {
+            const finalCount = segments.filter(s => s.is_final).length;
+            const pendingCount = segments.filter(s => !s.is_final).length;
+            document.getElementById('info-segments').textContent =
+                `段落: ${finalCount} 已确定 / ${pendingCount} 临时`;
+            document.getElementById('info-asr').innerHTML = isRecording
+                ? `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg> ASR: 识别中...`
+                : `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> ASR: 等待启动`;
+        }
+
+        // ================================================================
+        // 工具函数
+        // ================================================================
+
+        /**
+         * HTML 转义，防止 XSS 攻击
+         */
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function logInfo(...args) {
+            console.log('[TranslateApp]', ...args);
+        }
+
+        function logError(...args) {
+            console.error('[TranslateApp]', ...args);
+        }
+
+        // ================================================================
+        // 音频采集（Web Audio API）
+        // ================================================================
+
+        /**
+         * 开始录音
+         *
+         * 流程:
+         * 1. 请求麦克风权限
+         * 2. 创建 AudioContext（16kHz 采样率以匹配 ASR）
+         * 3. 使用 ScriptProcessorNode 实时获取音频数据
+         * 4. 通过 Socket.IO 发送 Float32 音频数据到后端
+         */
+        async function startRecording() {
+            try {
+                // 1. 请求麦克风权限
+                mediaStream = await navigator.mediaDevices.getUserMedia({
+                    audio: {
+                        sampleRate: 16000,       // 匹配 ASR 要求
+                        channelCount: 1,          // 单声道
+                        echoCancellation: true,   // 回声消除
+                        noiseSuppression: true,   // 噪声抑制
+                        autoGainControl: true,    // 自动增益
+                    }
+                });
+
+                // 2. 创建 AudioContext
+                // 注意：如果浏览器不支持指定采样率，会在后面重采样
+                audioContext = new AudioContext({ sampleRate: 16000 });
+
+                // 创建音频源
+                sourceNode = audioContext.createMediaStreamSource(mediaStream);
+
+                // 3. 使用 ScriptProcessorNode 进行实时处理
+                // bufferSize=4096 在延迟和 CPU 开销间取得平衡
+                processorNode = audioContext.createScriptProcessor(4096, 1, 1);
+
+                processorNode.onaudioprocess = (e) => {
+                    if (!isRecording) return;
+
+                    // 获取输入音频数据（Float32 [-1, 1]）
+                    const inputData = e.inputBuffer.getChannelData(0);
+
+                    // 将 Float32Array 转为 ArrayBuffer 发送
+                    // 复制数据，因为底层的 ArrayBuffer 可能被复用
+                    const buffer = inputData.buffer.slice(0);
+                    socket.emit('audio_chunk', buffer);
+                };
+
+                // 连接音频图：source -> processor -> destination
+                sourceNode.connect(processorNode);
+                processorNode.connect(audioContext.destination);
+
+                // 通知后端开始录音
+                socket.emit('start_recording');
+
+            } catch (err) {
+                logError('启动录音失败:', err);
+                let message = '无法访问麦克风';
+                if (err.name === 'NotAllowedError') {
+                    message = '麦克风权限被拒绝，请在浏览器设置中允许麦克风访问';
+                } else if (err.name === 'NotFoundError') {
+                    message = '未找到麦克风设备';
+                } else if (err.name === 'NotSupportedError') {
+                    message = '浏览器不支持音频采集';
+                }
+                alert(message + ': ' + err.message);
+                // 恢复按钮状态
+                setButtonState('stopped');
+            }
+        }
+
+        /**
+         * 停止录音（用户点击停止按钮）
+         */
+        function stopRecording() {
+            stopRecordingLocal();
+            socket.emit('stop_recording');
+        }
+
+        /**
+         * 本地停止录音（清理音频资源）
+         *
+         * 注意：这里只清理前端资源，不发送 socket 事件，
+         * 因为断开连接时也会调用此方法。
+         */
+        function stopRecordingLocal() {
+            isRecording = false;
+
+            // 断开并释放音频处理节点
+            if (processorNode) {
+                try { processorNode.disconnect(); } catch (e) { /* ignore */ }
+                processorNode.onaudioprocess = null;
+                processorNode = null;
+            }
+
+            if (sourceNode) {
+                try { sourceNode.disconnect(); } catch (e) { /* ignore */ }
+                sourceNode = null;
+            }
+
+            if (audioContext) {
+                try { audioContext.close(); } catch (e) { /* ignore */ }
+                audioContext = null;
+            }
+
+            if (mediaStream) {
+                mediaStream.getTracks().forEach(track => track.stop());
+                mediaStream = null;
+            }
+
+            showAudioViz(false);
+            setButtonState('stopped');
+        }
+
+        // ================================================================
+        // 页面生命周期
+        // ================================================================
+
+        /**
+         * 页面关闭前清理资源
+         */
+        window.addEventListener('beforeunload', () => {
+            if (isRecording) {
+                stopRecordingLocal();
+            }
+        });
+
+        /**
+         * 键盘快捷键
+         * Space: 开始/停止录音
+         */
+        document.addEventListener('keydown', (e) => {
+            // 忽略在输入框中的按键
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+                return;
+            }
+
+            if (e.code === 'Space' && !e.repeat) {
+                e.preventDefault();
+                if (isRecording) {
+                    stopRecording();
+                } else {
+                    startRecording();
+                }
+            }
+        });
+
+        // ================================================================
+        // 初始化日志
+        // ================================================================
+        logInfo('实时语音翻译字幕 Dashboard 已加载');
+        logInfo('快捷键: 空格键 = 开始/停止录音');
+    </script>
+</body>
+</html>
