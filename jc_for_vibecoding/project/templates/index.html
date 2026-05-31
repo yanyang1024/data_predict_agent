@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>实时语音翻译字幕 - Seamless M4T v2</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+</head>
+<body class="dark-theme">
+    <!-- 顶部状态栏 -->
+    <header class="status-bar">
+        <div class="status-left">
+            <div class="status-indicator" id="connectionStatus">
+                <span class="status-dot" id="statusDot"></span>
+                <span class="status-label" id="statusLabel">连接中...</span>
+            </div>
+            <div class="streaming-status" id="streamingStatus" style="display: none;">
+                <span class="pulse-dot"></span>
+                <span>采集中</span>
+            </div>
+        </div>
+        <div class="model-info">
+            <span class="model-icon">&#x1F504;</span>
+            <span>Seamless M4T v2 Large</span>
+            <span class="lang-badge">zh → en</span>
+        </div>
+    </header>
+
+    <!-- 主字幕区 -->
+    <main class="subtitle-container">
+        <div class="subtitle-history" id="subtitleHistory"></div>
+        <div class="subtitle-current" id="currentSubtitle">
+            <span class="hint">点击「开始采集」启动实时翻译</span>
+        </div>
+    </main>
+
+    <!-- 底部控制栏 -->
+    <footer class="control-bar">
+        <div class="controls-left">
+            <button id="startBtn" class="btn btn-primary">
+                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+                    <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                    <line x1="12" y1="19" x2="12" y2="23"></line>
+                    <line x1="8" y1="23" x2="16" y2="23"></line>
+                </svg>
+                开始采集
+            </button>
+            <button id="stopBtn" class="btn btn-secondary" disabled>
+                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="4" y="4" width="16" height="16" rx="2"></rect>
+                </svg>
+                停止
+            </button>
+        </div>
+        <div class="audio-meter-container">
+            <div class="audio-meter-label">音量</div>
+            <div class="audio-meter">
+                <div class="meter-bar" id="audioMeter"></div>
+                <div class="meter-marks">
+                    <span></span><span></span><span></span><span></span><span></span>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script src="{{ url_for('static', filename='js/audio_capture.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/websocket_client.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+</body>
+</html>

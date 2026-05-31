@@ -1,0 +1,30 @@
+# 核心深度学习
+torch==2.0.1
+torchaudio==2.0.1
+transformers==4.37.2
+accelerate>=0.25.0
+
+# Flask Web 框架
+Flask==3.0.3
+Flask-SocketIO==5.3.6
+Flask-CORS==4.0.0
+python-socketio==5.11.0
+
+# 其他依赖
+numpy==1.24.4
+scipy==1.11.4
+
+# 音频处理
+librosa==0.10.1
+soundfile==0.12.1
+
+# 日志与工具
+tqdm==4.66.1
+packaging==23.2
+
+# LLM API
+openai>=1.0.0
+
+# 生产环境 WSGI (可选)
+# gunicorn==21.2.0
+# eventlet==0.35.2
