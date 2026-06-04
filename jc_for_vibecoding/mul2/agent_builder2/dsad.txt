@@ -1,0 +1,1600 @@
+下面是一版可直接继续编辑的初版方案文档。我把你原先列出的 4 类 subagent 扩展为 7 类，并按 OpenCode 的 Tool / Subagent / Skill 分层来设计。
+
+半导体 Etch 多智能体框架初版方案文档
+
+1. 背景与目标
+
+本方案面向半导体 Etch 工艺场景，目标是构建一个采用 主 Agent + 多 Subagent 的多智能体系统，用于支持 Etch recipe 参数分析、机理解释、文献类比、历史数据建模、多目标优化、DOE 实验设计与结果汇总。
+
+当前各部分实现成熟度不一致，因此第一版方案不追求端到端完全自动化，而是优先建立：
+
+1. 可扩展的多智能体框架；
+2. 每个 subagent 的职责边界；
+3. 当前有 API 或工具支持时的接入方式；
+4. 当前暂无实现支持时的占位逻辑、基础文档和 mock 工具；
+5. 最后通过一个 Etch Skill 将所有 subagent 串联起来。
+
+整体设计参考 OpenCode 的 subagent 机制：
+
+* Tool 负责确定性、原子化能力，例如 API 调用、文件解析、DOE 矩阵生成、模型预测请求等；
+* Subagent 负责多步推理、任务拆解、专家判断和结果解释；
+* Skill 负责把一组 subagent 和工具封装为完整工作流。
+
+⸻
+
+2. 总体架构
+
+2.1 架构分层
+
+用户
+ │
+ ▼
+Etch 主 Agent / Orchestrator
+ │
+ ├── 1. Mechanism Agent       机理模型 / 仿真解释
+ ├── 2. Literature Agent      文献检索 / 方法迁移
+ ├── 3. Data Optimization Agent 历史数据建模 / 多目标优化
+ ├── 4. DOE Agent             实验设计 / 统计分析
+ ├── 5. Constraint Agent      工艺约束 / Recipe 合规检查
+ ├── 6. Integration Agent     方案融合 / 冲突仲裁
+ └── 7. Report Agent          报告生成 / Skill 输出整理
+
+2.2 推荐的 7 个 Subagent
+
+你原先列出了 4 个核心 agent：机理、文献、数据、DOE。为了让系统真正能形成闭环，建议补充 3 个 agent：
+
+编号	Subagent	主要作用	当前成熟度
+1	Mechanism Agent	机理模型、仿真解释、物理/化学约束	暂无实现，先占位
+2	Literature Agent	文献检索、类比建议、数据污染识别	API 设计已有，但当前关闭
+3	Data Optimization Agent	历史数据建模、多目标优化、参数推荐	API 设计已有，但当前关闭
+4	DOE Agent	实验设计、统计分析、HTML 报告	可先做通用实现
+5	Constraint Agent	工艺约束、RCP 合规、参数边界检查	建议新增，先规则化实现
+6	Integration Agent	汇总各 agent 输出，处理冲突，形成推荐方案	建议新增，主要靠 LLM 推理
+7	Report Agent	输出最终方案、实验计划、风险说明、下载文件索引	建议新增，主要靠模板化文档生成
+
+⸻
+
+3. 推荐工作流
+
+3.1 主流程
+
+Step 1: 用户输入 Etch 场景问题
+  - 目标：改善条纹度 / CD / 畸变率 / profile / selectivity 等
+  - 输入：layer 类型、当前 RCP、历史数据、约束、实验预算
+Step 2: Orchestrator 解析任务
+  - 判断用户问题属于：
+    A. 参数解释
+    B. 参数优化
+    C. DOE 设计
+    D. 文献调研
+    E. 机理边界分析
+    F. 综合方案生成
+Step 3: 并行或顺序调用 subagent
+  - Mechanism Agent 给出机理约束与方向解释
+  - Literature Agent 给出类似场景参考
+  - Data Agent 给出历史数据驱动推荐
+  - DOE Agent 给出实验设计方案
+  - Constraint Agent 检查安全边界、工艺边界、RCP 合规性
+Step 4: Integration Agent 融合结果
+  - 判断不同 agent 之间是否冲突
+  - 区分“数据支持强”“机理支持强”“文献支持弱”“仅探索建议”
+  - 给出推荐优先级
+Step 5: Report Agent 生成最终文档
+  - 推荐 RCP 调整方向
+  - Top N 候选方案
+  - DOE 计划
+  - 风险点
+  - 后续实现和调试任务
+
+3.2 推荐编排模式
+
+第一版建议采用 Supervisor + Expert Pool + Producer-Reviewer 混合模式。
+
+Etch Orchestrator
+  ├── 并行调用：Literature / Mechanism / Data
+  ├── 顺序调用：Constraint 检查 Data 推荐结果
+  ├── 根据缺口调用 DOE 生成验证实验
+  ├── Integration 做冲突仲裁
+  └── Report 输出最终文档
+
+这样可以避免单一 agent 同时承担过多职责，也便于后续替换真实 API 或仿真工具。
+
+⸻
+
+4. 各 Subagent 详细设计
+
+4.1 Etch Orchestrator 主控 Agent
+
+定位
+
+Etch Orchestrator 是用户直接交互的主控 agent，负责理解用户目标、拆解任务、选择 subagent、融合结果，并决定是否需要继续追问用户。
+
+输入
+
+* 用户问题；
+* 当前 RCP 参数；
+* layer 类型，例如 LCH / MCH；
+* 工艺目标，例如 Row1/Row7 条纹度、畸变率、CD 约束；
+* 历史数据文件；
+* 是否允许使用文献 API、数据 API、DOE 工具、仿真工具。
+
+输出
+
+* 任务拆解结果；
+* 被调用 subagent 列表；
+* 各 agent 输出摘要；
+* 最终建议方案。
+
+推荐 OpenCode 配置
+
+文件：.opencode/agent/etch-orchestrator.md
+
+---
+description: Etch process orchestration agent for coordinating mechanism simulation, literature research, data optimization, DOE planning, process constraints, and final reporting. Use this as the main entry point for semiconductor etch multi-agent workflows.
+mode: subagent
+temperature: 0.2
+maxSteps: 30
+tools:
+  read: true
+  write: true
+  grep: true
+  glob: true
+  task: true
+permission:
+  write: ask
+  edit: ask
+  bash:
+    "*": ask
+  task:
+    "*": deny
+    "etch-mechanism": allow
+    "etch-literature": allow
+    "etch-data-optimization": allow
+    "etch-doe": allow
+    "etch-constraint": allow
+    "etch-integration": allow
+    "etch-report": allow
+---
+You are the Etch Multi-Agent Orchestrator.
+Your job is to:
+1. Understand the user's Etch process objective.
+2. Identify required inputs and missing information.
+3. Dispatch specialized subagents.
+4. Integrate their outputs into a coherent process recommendation.
+5. Clearly distinguish between:
+   - data-supported recommendations,
+   - mechanism-supported recommendations,
+   - literature-supported recommendations,
+   - DOE exploration suggestions,
+   - unsupported hypotheses.
+Do not fabricate API results. If an API or simulator is unavailable, mark the result as placeholder logic.
+
+⸻
+
+4.2 Mechanism Agent：机理模型 / 仿真 Agent
+
+当前状态
+
+当前仿真 owner 尚未提供具体实现支持，因此第一版不应假设已有真实仿真能力。建议先把 Mechanism Agent 设计为 机理逻辑占位 + 输入输出协议定义 + mock simulator 工具。
+
+主要职责
+
+1. 接收 RCP 参数；
+2. 给出基于物理/化学常识的方向性解释；
+3. 建立 RCP 参数与 Etch 性能指标之间的概念映射；
+4. 输出工艺窗口边界、偏差根因假设；
+5. 为 Data Agent / DOE Agent 提供约束条件；
+6. 等真实仿真 API 接入后，替换 mock 工具。
+
+不建议第一版承担的任务
+
+* 不直接给出“确定最优 recipe”；
+* 不伪造仿真数值；
+* 不把机理解释当作实际实验结论；
+* 不替代历史数据模型或 DOE 统计分析。
+
+推荐子任务
+
+子任务	描述
+mechanism_parse_rcp	解析用户输入的 RCP 参数
+mechanism_map_effect	给出参数变化可能影响的 Etch 指标
+mechanism_window_reasoning	分析潜在工艺窗口边界
+mechanism_root_cause	对异常 CD、条纹度、畸变率给出根因假设
+mechanism_constraint_export	输出给 Constraint Agent / DOE Agent 的边界建议
+
+基础文档建议
+
+建议先创建：
+
+docs/mechanism/
+  ├── etch_mechanism_assumption.md
+  ├── rcp_parameter_taxonomy.md
+  ├── mechanism_input_output_contract.md
+  └── mechanism_known_limitations.md
+
+etch_mechanism_assumption.md 建议内容
+
+# Etch Mechanism Assumptions
+## 1. Scope
+This document defines first-version qualitative assumptions for Etch mechanism reasoning before the real simulator is integrated.
+## 2. Supported Reasoning
+The mechanism agent may reason about:
+- plasma power impact,
+- pressure impact,
+- gas flow ratio impact,
+- bias-related ion energy impact,
+- selectivity and profile tendency,
+- CD bias risk,
+- microloading or pattern dependency hypothesis.
+## 3. Unsupported Reasoning
+The mechanism agent must not:
+- generate fabricated simulation values,
+- claim exact CD or etch rate prediction,
+- claim validated process windows without data,
+- override experimental or historical data results.
+## 4. Output Confidence
+Every conclusion should be labeled as:
+- HIGH: supported by known mechanism and user-provided data,
+- MEDIUM: mechanism-plausible but not experimentally verified,
+- LOW: hypothesis only.
+
+推荐 OpenCode Subagent
+
+文件：.opencode/agent/etch-mechanism.md
+
+---
+description: Etch mechanism reasoning agent for qualitative physics and chemistry explanation. Use this when the task needs process-window reasoning, root-cause hypotheses, or constraints from Etch mechanism. This agent currently uses placeholder logic until a real simulator is connected.
+mode: subagent
+temperature: 0.2
+maxSteps: 20
+tools:
+  read: true
+  grep: true
+  bash: false
+permission:
+  edit: deny
+  write: deny
+  bash: deny
+---
+You are an Etch mechanism reasoning specialist.
+Current implementation status:
+- Real simulator is not yet integrated.
+- You must provide qualitative, mechanism-based reasoning only.
+- Do not fabricate numerical simulation results.
+Your workflow:
+1. Parse the user's Etch objective and RCP parameters.
+2. Identify relevant parameter groups:
+   - gas flow,
+   - pressure,
+   - source power,
+   - bias power,
+   - time,
+   - temperature,
+   - pulsing parameters,
+   - other chamber/process settings.
+3. Explain likely effects on:
+   - Bias CD,
+   - Bottom CD,
+   - Max CD,
+   - Row1 / Row7 stripe metrics,
+   - distortion rate,
+   - profile risk,
+   - selectivity risk.
+4. Export constraints and hypotheses for other agents.
+Output format:
+## Mechanism Summary
+## Parameter-to-Effect Mapping
+## Potential Process Window Boundaries
+## Root-Cause Hypotheses
+## Constraints for Optimization / DOE
+## Confidence and Limitations
+
+推荐 Tool：mock 机理工具
+
+文件：.opencode/tools/etch-mechanism-mock.ts
+
+import { tool } from "@opencode-ai/plugin"
+export default tool({
+  description: "Mock Etch mechanism evaluator. Use only as a placeholder before the real simulator is integrated. It returns qualitative mechanism hints, not validated simulation results.",
+  args: {
+    rcpJson: tool.schema.string().describe("RCP parameters as a JSON string"),
+    objective: tool.schema.string().describe("Etch objective or issue description"),
+  },
+  async execute(args) {
+    let parsed: any
+    try {
+      parsed = JSON.parse(args.rcpJson)
+    } catch {
+      return JSON.stringify({
+        success: false,
+        error: "Invalid rcpJson. Please provide valid JSON.",
+      }, null, 2)
+    }
+    return JSON.stringify({
+      success: true,
+      mode: "placeholder_only",
+      objective: args.objective,
+      input_keys: Object.keys(parsed),
+      qualitative_hints: [
+        "Check whether bias-related parameters may affect ion energy and CD/profile risk.",
+        "Check whether pressure or gas-ratio changes may affect etch uniformity and selectivity.",
+        "Use historical data or DOE validation before treating these hints as recommendations."
+      ],
+      limitations: [
+        "No real simulator is connected.",
+        "No numerical prediction is generated.",
+        "This output is not process-validated."
+      ]
+    }, null, 2)
+  },
+})
+
+后续真实仿真 API 接入后，只需要把 mock tool 替换为：
+
+etch-simulator-run
+etch-simulator-status
+etch-simulator-result
+etch-simulator-explain
+
+⸻
+
+4.3 Literature Agent：文献检索 / 方法迁移 Agent
+
+当前状态
+
+已有远程知识库 API 设计，但当前 API 关闭。第一版先抽象为 Literature API Adapter + mock 返回 + 引用格式约束。
+
+目标能力
+
+1. 检索 IEEE IMW 论文集等半导体制造文献；
+2. 提取类似 Etch 场景中的方法、机理解释和优化策略；
+3. 标注文档名称、内容片段、下载链接；
+4. 标注外部知识来源；
+5. 承担数据污染识别职责；
+6. 不直接参与参数优化，只提供方向性建议。
+
+API 工作流
+
+create_conversation
+  ↓
+chat_query_v2_sse
+  ↓
+等待 5 秒
+  ↓
+get_message_info
+  ↓
+提取引用文档信息
+
+推荐子任务
+
+子任务	描述
+literature_query_build	根据 Etch 问题生成检索 query
+literature_retrieve	调用知识库 API
+literature_extract_methods	提炼类似场景方法
+literature_mechanism_compare	对比文献机理与当前问题
+literature_pollution_check	检查是否存在数据污染或不适用来源
+literature_citation_export	输出文献名称、片段、下载链接
+
+推荐 OpenCode Subagent
+
+文件：.opencode/agent/etch-literature.md
+
+---
+description: Etch literature research agent for retrieving semiconductor manufacturing papers, extracting transferable methods, and checking citation/data contamination risk. Use this when external literature, IEEE IMW references, or cross-scenario methodology is needed.
+mode: subagent
+temperature: 0.3
+maxSteps: 20
+tools:
+  read: true
+  grep: true
+  bash: true
+permission:
+  edit: deny
+  write: deny
+  bash:
+    "*": ask
+    "curl*": allow
+---
+You are an Etch literature research specialist.
+Current implementation status:
+- The remote literature API may be unavailable.
+- If the API is unavailable, produce a placeholder research plan and query strategy.
+- Do not invent paper titles, document names, snippets, or download links.
+Your responsibilities:
+1. Build search queries from the user's Etch problem.
+2. Retrieve literature through the configured API when available.
+3. Extract transferable methods and qualitative mechanism explanations.
+4. Mark all external references with:
+   - document name,
+   - cited content snippet,
+   - download link,
+   - relevance level.
+5. Identify possible data contamination:
+   - duplicate source,
+   - training/evaluation leakage,
+   - irrelevant process condition,
+   - mismatch between paper scenario and current Etch scenario.
+Output format:
+## Query Strategy
+## Retrieved Literature
+## Transferable Methods
+## Mechanism Insights
+## Applicability to Current Etch Scenario
+## Data Pollution / Contamination Risk
+## Limitations
+
+推荐 Tool：文献 API Adapter
+
+文件：.opencode/tools/etch-literature-api.ts
+
+import { tool } from "@opencode-ai/plugin"
+const BASE_URL = process.env.ETCH_LITERATURE_API_BASE || "http://10.18.220.244:32300"
+async function sleep(ms: number) {
+  return new Promise(resolve => setTimeout(resolve, ms))
+}
+export default tool({
+  description: "Call the Etch literature knowledge-base API. Use this to create a conversation, send a streaming literature query, wait, and retrieve citation metadata. If the API is unavailable, return a structured error.",
+  args: {
+    query: tool.schema.string().describe("Literature search question for Etch process, mechanism, DOE, or optimization methods"),
+    waitMs: tool.schema.number().default(5000).describe("Wait time before retrieving message info"),
+  },
+  async execute(args) {
+    try {
+      const convResp = await fetch(`${BASE_URL}/create_conversation`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({})
+      })
+      if (!convResp.ok) {
+        return JSON.stringify({
+          success: false,
+          stage: "create_conversation",
+          status: convResp.status,
+          error: await convResp.text(),
+          fallback: "Use placeholder literature query plan."
+        }, null, 2)
+      }
+      const conv = await convResp.json()
+      const conversationId = conv.conversation_id || conv.id
+      const chatResp = await fetch(`${BASE_URL}/chat_query_v2_sse`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          conversation_id: conversationId,
+          query: args.query
+        })
+      })
+      if (!chatResp.ok) {
+        return JSON.stringify({
+          success: false,
+          stage: "chat_query_v2_sse",
+          status: chatResp.status,
+          error: await chatResp.text(),
+          conversationId
+        }, null, 2)
+      }
+      await sleep(args.waitMs)
+      const infoResp = await fetch(`${BASE_URL}/get_message_info?conversation_id=${encodeURIComponent(conversationId)}`, {
+        method: "GET"
+      })
+      if (!infoResp.ok) {
+        return JSON.stringify({
+          success: false,
+          stage: "get_message_info",
+          status: infoResp.status,
+          error: await infoResp.text(),
+          conversationId
+        }, null, 2)
+      }
+      const info = await infoResp.json()
+      return JSON.stringify({
+        success: true,
+        conversationId,
+        messageInfo: info
+      }, null, 2)
+    } catch (error) {
+      return JSON.stringify({
+        success: false,
+        error: error instanceof Error ? error.message : String(error),
+        fallback: "Literature API unavailable. Use query strategy and placeholder citation schema only."
+      }, null, 2)
+    }
+  },
+})
+
+⸻
+
+4.4 Data Optimization Agent：历史数据建模 / 多目标优化 Agent
+
+当前状态
+
+已有数据预测 API 设计，部署地址为：
+
+http://10.20.52.249:5314
+http://10.20.52.249:5315
+
+但当前 API 关闭。第一版建议设计为 Data API Adapter + 数据契约 + fallback 分析逻辑。
+
+核心职责
+
+1. 加载历史蚀刻运行数据；
+2. 按层类型选择数据源，例如 LCH / MCH；
+3. 自动完成特征筛选、缺失值填充、标签编码、标准化、PCA；
+4. 生成数据质量报告；
+5. 对比 6 种回归模型；
+6. 基于 R² 选择最佳模型；
+7. 使用 Optuna NSGA-II 做多目标约束优化；
+8. 输出 Top N 推荐候选；
+9. 支持用户交互式修改部分参数；
+10. 产出文件集下载。
+
+推荐子任务
+
+子任务	描述
+data_source_select	根据 layer 类型选择数据源
+data_quality_check	输出样本数、特征数、缺失率、排除列
+data_model_compare	对比 LightGBM / CatBoost / GPR / SVR / Ridge / LinearRegression
+data_trust_assess	根据 R² 与样本质量评估可信度
+data_multi_objective_optimize	运行多目标优化
+data_candidate_rank	Top N 候选排序
+data_user_override_predict	用户修改部分参数后预测
+data_export_files	输出下载文件索引
+
+推荐 OpenCode Subagent
+
+文件：.opencode/agent/etch-data-optimization.md
+
+---
+description: Etch historical data mining and multi-objective optimization agent. Use this when the user provides historical RCP data, asks for parameter recommendation, model comparison, data quality report, or constrained optimization.
+mode: subagent
+temperature: 0.15
+maxSteps: 25
+tools:
+  read: true
+  write: true
+  bash: true
+permission:
+  write: ask
+  edit: deny
+  bash:
+    "*": ask
+    "curl*": allow
+    "python*": ask
+---
+You are an Etch data optimization specialist.
+Current implementation status:
+- A remote data prediction API is planned or partially implemented.
+- If the API is unavailable, do not fabricate model metrics or optimization results.
+- You may produce a data-processing plan, expected schema, and fallback checklist.
+Your responsibilities:
+1. Load or describe historical RCP data.
+2. Select data source by layer type: LCH / MCH.
+3. Request data quality report:
+   - sample count,
+   - feature count,
+   - PCA dimensions,
+   - excluded sparse columns,
+   - ME/OEA excluded columns,
+   - missing-value handling.
+4. Compare models:
+   - LightGBM,
+   - CatBoost,
+   - GPR,
+   - SVR,
+   - Ridge,
+   - LinearRegression.
+5. Assess reliability using R² and data coverage.
+6. Run or request NSGA-II multi-objective optimization.
+7. Return:
+   - recommended parameter set,
+   - Top N candidates,
+   - comparison against historical best,
+   - PASS/FAIL and BETTER/WORSE labels,
+   - generated file list.
+Output format:
+## Data Source and Scope
+## Data Quality Report
+## Model Comparison
+## Trust Level
+## Optimization Objective and Constraints
+## Recommended Candidates
+## Comparison with Historical Best
+## User-Override Prediction Support
+## Exported Files
+## Limitations
+
+推荐 Tool：数据 API Adapter
+
+文件：.opencode/tools/etch-data-api.ts
+
+import { tool } from "@opencode-ai/plugin"
+const BASE_URL_1 = process.env.ETCH_DATA_API_BASE || "http://10.20.52.249:5314"
+const BASE_URL_2 = process.env.ETCH_DATA_API_BASE_ALT || "http://10.20.52.249:5315"
+export default tool({
+  description: "Call the Etch data prediction and multi-objective optimization API. Use this for historical data quality report, model comparison, NSGA-II optimization, and user parameter override prediction.",
+  args: {
+    action: tool.schema.enum([
+      "health_check",
+      "data_quality",
+      "model_compare",
+      "optimize",
+      "predict_override",
+      "export_files"
+    ]).describe("API action to perform"),
+    layerType: tool.schema.enum(["LCH", "MCH"]).describe("Etch layer type"),
+    payloadJson: tool.schema.string().default("{}").describe("Action-specific JSON payload"),
+    base: tool.schema.enum(["primary", "secondary"]).default("primary").describe("Which API base URL to use"),
+  },
+  async execute(args) {
+    const baseUrl = args.base === "primary" ? BASE_URL_1 : BASE_URL_2
+    let payload: any
+    try {
+      payload = JSON.parse(args.payloadJson)
+    } catch {
+      return JSON.stringify({
+        success: false,
+        error: "Invalid payloadJson. Please provide valid JSON."
+      }, null, 2)
+    }
+    try {
+      const response = await fetch(`${baseUrl}/${args.action}`, {
+        method: args.action === "health_check" ? "GET" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: args.action === "health_check"
+          ? undefined
+          : JSON.stringify({
+              layer_type: args.layerType,
+              ...payload
+            })
+      })
+      if (!response.ok) {
+        return JSON.stringify({
+          success: false,
+          baseUrl,
+          action: args.action,
+          status: response.status,
+          error: await response.text(),
+          fallback: "Data API unavailable. Return schema-level plan only."
+        }, null, 2)
+      }
+      const data = await response.json()
+      return JSON.stringify({
+        success: true,
+        baseUrl,
+        action: args.action,
+        result: data
+      }, null, 2)
+    } catch (error) {
+      return JSON.stringify({
+        success: false,
+        baseUrl,
+        action: args.action,
+        error: error instanceof Error ? error.message : String(error),
+        fallback: "Data API unavailable. Use fallback data plan and do not fabricate metrics."
+      }, null, 2)
+    }
+  },
+})
+
+数据 API 调试与配置方案
+
+当数据 API 恢复后，建议按以下顺序调试：
+
+1. health_check
+   - 确认 5314 / 5315 哪个服务可用
+   - 记录版本号、模型版本、数据更新时间
+2. data_quality
+   - 检查 LCH / MCH 数据源是否能正确选择
+   - 对比样本数、特征数、排除列是否合理
+3. model_compare
+   - 确认 6 种模型均有返回
+   - 检查 R² 是否区分 train / validation / time-series CV
+4. optimize
+   - 检查目标函数方向是否正确：
+     - minimize Row1 stripe
+     - minimize Row7 stripe
+     - maximize Row7 distortion rate
+     - maximize distortion ratio
+   - 检查约束：
+     - Bias CD
+     - Bottom CD
+     - Max CD
+5. predict_override
+   - 用户只输入部分参数时，确认其余参数是否自动填充
+   - 分类变量原始字符串是否被正确编码
+6. export_files
+   - 检查推荐参数、summary、trials、PCA、model comparison 文件是否可下载
+
+⸻
+
+4.5 DOE Agent：实验设计 / 统计分析 Agent
+
+当前状态
+
+DOE 可以先做成较成熟的通用工具，因为它不强依赖 Etch 真实 API。第一版建议采用 Skill + Subagent + 本地 Python 工具。
+
+核心职责
+
+1. 引导用户明确实验目标；
+2. 明确因子、水平、约束、实验预算；
+3. 推荐设计类型；
+4. 生成编码实验设计矩阵；
+5. 支持随机化运行顺序；
+6. 实验完成后进行统计分析；
+7. 输出自包含 HTML 报告；
+8. DOE 结果回填历史数据库。
+
+推荐子任务
+
+子任务	描述
+doe_goal_clarify	明确实验目标
+doe_factor_define	定义因子和水平
+doe_design_select	推荐全因子、部分因子、Taguchi、CCD、Box-Behnken
+doe_matrix_generate	生成编码矩阵
+doe_run_randomize	随机化 run order
+doe_result_analyze	主效应、交互效应、Pareto、ANOVA
+doe_report_generate	输出 HTML 报告
+doe_feedback_to_data	实验数据回填历史数据库
+
+推荐 OpenCode Subagent
+
+文件：.opencode/agent/etch-doe.md
+
+---
+description: DOE planning and statistical analysis agent for Etch experiments. Use this when the user needs factor design, coded design matrix, Taguchi/full-factorial/response-surface design, ANOVA, Pareto chart, main effects, interaction effects, or HTML DOE report.
+mode: subagent
+temperature: 0.25
+maxSteps: 25
+tools:
+  read: true
+  write: true
+  bash: true
+permission:
+  write: ask
+  edit: ask
+  bash:
+    "*": ask
+    "python*": allow
+---
+You are an Etch DOE specialist.
+Your responsibilities:
+1. Clarify:
+   - experiment objective,
+   - response variables,
+   - factors,
+   - levels,
+   - constraints,
+   - maximum run budget.
+2. Recommend design type:
+   - full factorial,
+   - fractional factorial,
+   - Taguchi orthogonal array,
+   - CCD,
+   - Box-Behnken.
+3. Generate coded design matrix using generic factor names A, B, C...
+4. Remind the user to map coded factors to actual Etch RCP parameters.
+5. After results are available, analyze:
+   - main effects,
+   - interaction effects,
+   - Pareto ranking,
+   - ANOVA,
+   - linear model fit,
+   - significance with p < 0.05.
+6. Generate a self-contained HTML report.
+Important:
+- DOE design uses generic coded factors.
+- Do not assume actual RCP parameter values unless provided by the user.
+- DOE results should be fed back into historical database after validation.
+Output format:
+## DOE Objective
+## Factors and Levels
+## Recommended Design
+## Coded Matrix
+## Run Order
+## Analysis Plan
+## Validation Plan
+## Data Feedback Plan
+
+推荐 Tool：DOE 本地工具
+
+文件：.opencode/tools/etch-doe.ts
+
+import { tool } from "@opencode-ai/plugin"
+import path from "path"
+export default tool({
+  description: "Generate and analyze generic DOE designs for Etch experiments. Supports coded design matrix generation and delegates analysis/reporting to Python.",
+  args: {
+    action: tool.schema.enum([
+      "generate_full_factorial",
+      "generate_fractional_factorial",
+      "generate_taguchi_placeholder",
+      "generate_response_surface_placeholder",
+      "analyze_results"
+    ]).describe("DOE action"),
+    factorCount: tool.schema.number().min(1).max(12).describe("Number of experimental factors"),
+    levelsJson: tool.schema.string().default("{}").describe("JSON definition of levels for each factor"),
+    resultsCsvPath: tool.schema.string().optional().describe("Path to completed DOE results CSV for analysis"),
+    outputDir: tool.schema.string().default("outputs/doe").describe("Output directory"),
+  },
+  async execute(args, context) {
+    const script = path.join(context.worktree, ".opencode/tools/etch_doe.py")
+    const cmd = [
+      "python3",
+      script,
+      "--action", args.action,
+      "--factor-count", String(args.factorCount),
+      "--levels-json", JSON.stringify(args.levelsJson),
+      "--output-dir", args.outputDir
+    ]
+    if (args.resultsCsvPath) {
+      cmd.push("--results-csv-path", args.resultsCsvPath)
+    }
+    try {
+      const result = await Bun.$`${cmd}`.text()
+      return result.trim()
+    } catch (error) {
+      return JSON.stringify({
+        success: false,
+        error: error instanceof Error ? error.message : String(error),
+        suggestion: "Check whether Python dependencies are installed and paths are valid."
+      }, null, 2)
+    }
+  },
+})
+
+⸻
+
+4.6 Constraint Agent：工艺约束 / Recipe Guardian Agent
+
+为什么需要新增
+
+Etch 场景中，仅有数据优化或 DOE 设计是不够的。即使 Data Agent 给出某组参数更优，也必须检查：
+
+* 是否超出历史参数空间；
+* 是否违反设备安全边界；
+* 是否违反工艺窗口；
+* 是否违反 Bias CD / Bottom CD / Max CD 约束；
+* 是否存在不合理参数组合；
+* 是否与机理解释冲突。
+
+因此建议新增 Constraint Agent，作为所有推荐方案的“守门员”。
+
+核心职责
+
+1. 检查参数范围；
+2. 检查工艺约束；
+3. 检查设备约束；
+4. 检查历史空间外推风险；
+5. 检查机理冲突；
+6. 输出 PASS / FAIL / WARNING；
+7. 为 Integration Agent 提供可行性标签。
+
+推荐子任务
+
+子任务	描述
+constraint_range_check	检查 RCP 参数是否在允许范围
+constraint_cd_check	检查 Bias CD / Bottom CD / Max CD
+constraint_history_space_check	判断是否超出历史数据空间
+constraint_mechanism_check	判断是否与机理边界冲突
+constraint_risk_label	输出 PASS / FAIL / WARNING
+constraint_fix_suggestion	给出回退或修正方向
+
+推荐基础文档
+
+docs/constraints/
+  ├── rcp_parameter_boundary.yaml
+  ├── cd_constraint_policy.md
+  ├── historical_space_policy.md
+  └── constraint_output_schema.md
+
+推荐约束配置示例
+
+文件：docs/constraints/rcp_parameter_boundary.yaml
+
+layer_type:
+  - LCH
+  - MCH
+parameters:
+  pressure:
+    type: numeric
+    min: null
+    max: null
+    unit: mTorr
+    source: "TBD by process owner"
+  source_power:
+    type: numeric
+    min: null
+    max: null
+    unit: W
+    source: "TBD by equipment/process owner"
+  bias_power:
+    type: numeric
+    min: null
+    max: null
+    unit: W
+    source: "TBD by equipment/process owner"
+  gas_flow:
+    type: numeric
+    min: null
+    max: null
+    unit: sccm
+    source: "TBD by process owner"
+constraints:
+  bias_cd:
+    min: null
+    max: null
+    source: "TBD"
+  bottom_cd:
+    min: null
+    max: null
+    source: "TBD"
+  max_cd:
+    min: null
+    max: null
+    source: "TBD"
+
+推荐 OpenCode Subagent
+
+文件：.opencode/agent/etch-constraint.md
+
+---
+description: Etch process constraint and recipe-guard agent. Use this to check recommended RCP parameters against process constraints, equipment boundaries, CD constraints, historical parameter space, and mechanism consistency.
+mode: subagent
+temperature: 0.1
+maxSteps: 15
+tools:
+  read: true
+  grep: true
+  bash: false
+permission:
+  edit: deny
+  write: deny
+  bash: deny
+---
+You are an Etch process constraint guardian.
+Your job is to check whether a proposed RCP or candidate recommendation is acceptable.
+Check:
+1. RCP parameter boundaries.
+2. Bias CD / Bottom CD / Max CD constraints.
+3. Whether the candidate is inside or outside historical parameter space.
+4. Whether the candidate conflicts with mechanism constraints.
+5. Whether the candidate is suitable for DOE validation.
+Output labels:
+- PASS: no known violation.
+- WARNING: possible risk or insufficient evidence.
+- FAIL: explicit violation.
+- UNKNOWN: missing boundary or constraint data.
+Output format:
+## Constraint Summary
+## PASS / WARNING / FAIL / UNKNOWN
+## Violated Constraints
+## Missing Constraint Data
+## Historical Space Risk
+## Mechanism Consistency
+## Suggested Adjustment
+
+⸻
+
+4.7 Integration Agent：方案融合 / 冲突仲裁 Agent
+
+为什么需要新增
+
+多个 agent 的输出可能冲突，例如：
+
+* Data Agent 推荐增大某参数；
+* Mechanism Agent 认为增大会带来 profile 风险；
+* Literature Agent 给出的类似场景不完全匹配；
+* DOE Agent 建议先做局部探索；
+* Constraint Agent 标记某些候选为 WARNING。
+
+因此需要 Integration Agent 做统一仲裁。
+
+核心职责
+
+1. 汇总所有 subagent 输出；
+2. 判断证据强弱；
+3. 处理冲突；
+4. 给出推荐优先级；
+5. 明确哪些建议可直接实验，哪些只能作为假设；
+6. 输出下一步实验计划。
+
+推荐证据分级
+
+Level A: 历史数据 + 约束检查 + 机理解释一致
+Level B: 历史数据支持，但机理或约束存在 WARNING
+Level C: 机理或文献支持，但缺少数据验证
+Level D: 仅 DOE 探索建议
+Level E: 信息不足，不建议执行
+
+推荐 OpenCode Subagent
+
+文件：.opencode/agent/etch-integration.md
+
+---
+description: Etch recommendation integration agent. Use this to combine outputs from mechanism, literature, data optimization, DOE, and constraint agents into one coherent recommendation with conflict resolution and evidence grading.
+mode: subagent
+temperature: 0.2
+maxSteps: 20
+tools:
+  read: true
+  write: true
+permission:
+  write: ask
+  edit: deny
+  bash: deny
+---
+You are an Etch multi-agent integration specialist.
+Your job:
+1. Read all subagent outputs.
+2. Identify agreement and conflict.
+3. Assign evidence level:
+   - Level A: data + constraint + mechanism aligned.
+   - Level B: data-supported but with warning.
+   - Level C: mechanism/literature-supported only.
+   - Level D: DOE exploration only.
+   - Level E: insufficient evidence.
+4. Produce final recommendation ranking.
+Do not overrule explicit FAIL from the Constraint Agent.
+If Data Agent is unavailable, clearly mark data-driven recommendation as unavailable.
+Output format:
+## Integrated Summary
+## Evidence Table
+## Conflict Analysis
+## Final Recommendation Ranking
+## Suggested DOE / Validation Plan
+## Risks and Open Questions
+
+⸻
+
+4.8 Report Agent：报告生成 Agent
+
+核心职责
+
+1. 把 Integration Agent 的结果转成可交付文档；
+2. 输出 Markdown / HTML / JSON；
+3. 包括推荐方案、风险、证据等级、实验计划；
+4. 记录每个 agent 的输入输出摘要；
+5. 记录文件下载链接或本地文件路径。
+
+推荐 OpenCode Subagent
+
+文件：.opencode/agent/etch-report.md
+
+---
+description: Etch report generation agent. Use this to create final Markdown or HTML reports from multi-agent outputs, including recommendations, evidence levels, DOE plans, risks, and exported file indexes.
+mode: subagent
+temperature: 0.3
+maxSteps: 15
+tools:
+  read: true
+  write: true
+permission:
+  write: allow
+  edit: ask
+  bash: deny
+---
+You are an Etch report generation specialist.
+Generate a clear, auditable report.
+The report must include:
+1. User objective.
+2. Input RCP and constraints.
+3. Subagent execution summary.
+4. Recommendation table.
+5. Evidence level.
+6. Constraint result.
+7. DOE validation plan.
+8. Risks and limitations.
+9. Files generated or required.
+10. Next implementation tasks.
+Use cautious wording when tools or APIs are unavailable.
+
+⸻
+
+5. Etch Skill 设计
+
+最终可以把整套多智能体流程做成一个 skill，例如：
+
+.opencode/skill/etch-multi-agent/SKILL.md
+
+推荐 Skill 结构
+
+.opencode/
+  ├── agent/
+  │   ├── etch-orchestrator.md
+  │   ├── etch-mechanism.md
+  │   ├── etch-literature.md
+  │   ├── etch-data-optimization.md
+  │   ├── etch-doe.md
+  │   ├── etch-constraint.md
+  │   ├── etch-integration.md
+  │   └── etch-report.md
+  │
+  ├── tools/
+  │   ├── etch-mechanism-mock.ts
+  │   ├── etch-literature-api.ts
+  │   ├── etch-data-api.ts
+  │   ├── etch-doe.ts
+  │   └── etch-constraint-check.ts
+  │
+  └── skill/
+      └── etch-multi-agent/
+          ├── SKILL.md
+          ├── workflow.md
+          ├── input_schema.md
+          ├── output_schema.md
+          └── examples.md
+
+SKILL.md 初版
+
+# Etch Multi-Agent Skill
+## Purpose
+This skill coordinates multiple Etch subagents to support semiconductor Etch process analysis, RCP recommendation, mechanism reasoning, literature-based reference, historical data optimization, DOE planning, constraint checking, and final report generation.
+## When to Use
+Use this skill when the user asks for:
+- Etch recipe optimization,
+- RCP parameter recommendation,
+- Etch abnormality root-cause analysis,
+- DOE experiment planning,
+- literature-based Etch methodology,
+- historical data mining,
+- multi-agent Etch workflow generation.
+## Workflow
+1. Parse user objective.
+2. Identify required inputs:
+   - layer type,
+   - current RCP,
+   - target metrics,
+   - CD constraints,
+   - historical data availability,
+   - DOE budget,
+   - API availability.
+3. Call subagents:
+   - etch-mechanism,
+   - etch-literature,
+   - etch-data-optimization,
+   - etch-doe,
+   - etch-constraint,
+   - etch-integration,
+   - etch-report.
+4. Produce final report.
+## Important Rules
+- Do not fabricate unavailable API results.
+- Do not fabricate simulator results.
+- Always separate:
+  - verified result,
+  - model prediction,
+  - mechanism hypothesis,
+  - literature analogy,
+  - DOE exploration.
+- Constraint FAIL cannot be overridden by other agents.
+- DOE recommendations must be treated as experimental plans, not validated conclusions.
+
+⸻
+
+6. Tool 与 Subagent 的分工建议
+
+6.1 推荐作为 Tool 的能力
+
+能力	Tool 名称	原因
+文献 API 调用	etch-literature-api	确定性 API 调用
+数据 API 调用	etch-data-api	确定性 API 调用
+DOE 矩阵生成	etch-doe	本地确定性计算
+约束检查	etch-constraint-check	规则化判断
+mock 机理解释	etch-mechanism-mock	占位工具
+文件导出	etch-export	结构化输出
+
+6.2 推荐作为 Subagent 的能力
+
+能力	Subagent	原因
+机理解释	etch-mechanism	需要多步推理
+文献方法迁移	etch-literature	需要判断相关性和污染风险
+数据优化解释	etch-data-optimization	需要解释模型可信度
+DOE 实验规划	etch-doe	需要交互式引导
+约束仲裁	etch-constraint	需要结合规则和上下文
+多源结果融合	etch-integration	需要处理冲突
+报告生成	etch-report	需要文档化输出
+
+⸻
+
+7. 当前无实现支持部分的基础支撑建议
+
+7.1 机理仿真暂无实现
+
+先做三件事：
+
+1. 定义输入输出 contract；
+2. 写机理假设文档；
+3. 做 mock tool。
+
+输入 Contract
+
+{
+  "layer_type": "LCH or MCH",
+  "rcp": {
+    "parameter_name": "value"
+  },
+  "target_metrics": [
+    "Row1 stripe",
+    "Row7 stripe",
+    "Bias CD",
+    "Bottom CD",
+    "Max CD",
+    "distortion rate"
+  ],
+  "known_constraints": {},
+  "question": "What should be improved?"
+}
+
+输出 Contract
+
+{
+  "success": true,
+  "mode": "real_simulator or placeholder",
+  "parameter_effects": [
+    {
+      "parameter": "bias_power",
+      "expected_effect": "May affect ion energy and CD/profile",
+      "confidence": "LOW/MEDIUM/HIGH",
+      "evidence": "mechanism assumption / simulator / user data"
+    }
+  ],
+  "process_window_hypotheses": [],
+  "root_cause_hypotheses": [],
+  "constraints_for_optimization": [],
+  "limitations": []
+}
+
+7.2 文献 API 当前关闭
+
+先做：
+
+1. API adapter；
+2. query builder；
+3. citation schema；
+4. fallback 模板。
+
+Citation Schema
+
+{
+  "document_name": "",
+  "snippet": "",
+  "download_url": "",
+  "relevance": "HIGH/MEDIUM/LOW",
+  "applicability": "",
+  "contamination_risk": "NONE/LOW/MEDIUM/HIGH",
+  "notes": ""
+}
+
+当 API 不可用时，Literature Agent 只能输出：
+
+- 建议查询关键词
+- 期望检索方向
+- 等 API 恢复后需要验证的文献问题
+- 不得输出伪造文献名称和链接
+
+7.3 数据 API 当前关闭
+
+先做：
+
+1. API adapter；
+2. health check；
+3. 数据输入 schema；
+4. fallback 数据质量 checklist；
+5. 不返回伪造 R² 或推荐参数。
+
+数据输入 Schema
+
+{
+  "layer_type": "LCH",
+  "data_path": "path/to/history.xlsx",
+  "objectives": {
+    "minimize": ["Row1_stripe", "Row7_stripe"],
+    "maximize": ["Row7_distortion_rate", "distortion_ratio"]
+  },
+  "constraints": {
+    "Bias_CD": { "min": null, "max": null },
+    "Bottom_CD": { "min": null, "max": null },
+    "Max_CD": { "min": null, "max": null }
+  },
+  "top_n": 10
+}
+
+7.4 Constraint Agent 当前暂无规则库
+
+先做：
+
+1. rcp_parameter_boundary.yaml；
+2. cd_constraint_policy.md；
+3. constraint_output_schema.md；
+4. 简单 TypeScript rule checker。
+
+第一版即使 min / max 为空，也可以输出：
+
+UNKNOWN: 当前缺少 owner 确认的参数边界，不能自动判定 PASS。
+
+这比直接跳过约束检查更安全。
+
+⸻
+
+8. 对已有实现支持的 Subagent 调试与配置方案
+
+8.1 Literature Agent 调试方案
+
+阶段 1：连通性检查
+
+- 检查 10.18.220.244:32300 是否可访问
+- 检查 create_conversation 是否返回 conversation_id
+- 检查 chat_query_v2_sse 是否能接受 query
+- 检查 SSE 是否正常结束
+- 等待 5 秒后调用 get_message_info
+
+阶段 2：引用完整性检查
+
+必须确认返回结果中有：
+
+- 文档名称
+- 内容片段
+- 下载链接
+- message id 或 source id
+
+阶段 3：污染识别检查
+
+Literature Agent 应额外检查：
+
+- 是否是重复文档
+- 是否与当前 Etch 层类型不匹配
+- 是否只是类似半导体场景但非 Etch
+- 是否包含明显训练/评测泄漏风险
+
+8.2 Data Optimization Agent 调试方案
+
+阶段 1：API 健康检查
+
+- 5314 health_check
+- 5315 health_check
+- 确认主备服务区别
+- 确认模型版本、数据版本
+
+阶段 2：数据质量报告检查
+
+确认返回：
+
+- 样本数
+- 原始特征数
+- 排除特征数
+- 稀疏列列表
+- ME/OEA 过滤列列表
+- 缺失值填充策略
+- PCA 维度
+- PCA 方差解释率
+
+阶段 3：模型对比检查
+
+确认 6 种模型均返回：
+
+- model_name
+- R²
+- RMSE 或 MAE
+- 交叉验证方式
+- 是否为 time-series CV
+
+阶段 4：优化结果检查
+
+确认：
+
+- 目标函数方向正确
+- 约束条件正确
+- Top N 候选包含预测值
+- 可行解与不可行解区分明确
+- 无可行解时返回“违反约束最少”的方案
+
+阶段 5：交互式参数探索检查
+
+确认用户输入：
+
+{
+  "bias_power": 120,
+  "gas_type": "CHF3"
+}
+
+时，系统能：
+
+- 自动填充其他参数
+- 正确处理数值变量
+- 正确处理分类变量原始字符串
+- 返回预测结果和约束状态
+
+8.3 DOE Agent 调试方案
+
+DOE Agent 可优先实现本地工具，不依赖远程 API。
+
+第一阶段只支持：
+
+- 2 水平全因子
+- 随机化运行顺序
+- CSV 输出
+
+第二阶段支持：
+
+- 部分因子
+- Taguchi 正交阵
+- CCD / Box-Behnken
+
+第三阶段支持：
+
+- ANOVA
+- Pareto 图
+- 主效应图
+- 交互效应图
+- HTML 报告
+
+⸻
+
+9. 第一版推荐落地顺序
+
+Phase 0：文档和骨架
+
+优先建立：
+
+.opencode/agent/*.md
+.opencode/tools/*.ts
+.opencode/skill/etch-multi-agent/SKILL.md
+docs/mechanism/*
+docs/constraints/*
+docs/schemas/*
+
+目标：即使 API 都关闭，也能跑通逻辑流程。
+
+Phase 1：DOE 本地工具
+
+优先做 DOE，因为它最不依赖外部系统：
+
+- 生成编码矩阵
+- 输出 CSV
+- 随机化 run order
+- 输出初版 Markdown/HTML 报告
+
+Phase 2：Constraint Agent
+
+建立简单规则检查：
+
+- 参数边界检查
+- CD 约束检查
+- UNKNOWN / PASS / WARNING / FAIL
+
+即使边界暂时为空，也先把 schema 建好。
+
+Phase 3：Literature API Adapter
+
+API 恢复后接入：
+
+create_conversation
+chat_query_v2_sse
+get_message_info
+citation extraction
+
+Phase 4：Data API Adapter
+
+API 恢复后接入：
+
+data quality
+model comparison
+optimization
+interactive prediction
+file export
+
+Phase 5：Mechanism Simulator Adapter
+
+等仿真 owner 提供接口后接入：
+
+simulator_run
+simulator_status
+simulator_result
+simulator_explain
+
+⸻
+
+10. 推荐用户交互模板
+
+10.1 用户发起参数优化时
+
+请提供：
+1. layer 类型：LCH / MCH
+2. 当前 RCP 参数
+3. 主要优化目标：
+   - Row1 条纹度
+   - Row7 条纹度
+   - Row7 畸变率
+   - 畸变率比值
+   - Bias CD
+   - Bottom CD
+   - Max CD
+4. 哪些指标必须作为硬约束？
+5. 是否有历史数据文件？
+6. 是否希望生成 DOE 验证计划？
+
+10.2 用户发起 DOE 时
+
+请提供：
+1. 实验目标
+2. 候选因子
+3. 每个因子的水平数
+4. 最大 run 数
+5. 是否允许随机化 run order
+6. 响应变量名称
+7. 是否需要实验后 ANOVA / Pareto / HTML 报告
+
+10.3 用户发起机理解释时
+
+请提供：
+1. 当前异常现象
+2. 当前 RCP
+3. 变化前后的参数差异
+4. 对应指标变化
+5. 是否已有 SEM / CD / profile / OEA / ME 数据
+
+⸻
+
+11. 最终输出格式建议
+
+最终 Etch 多智能体系统每次运行应输出：
+
+# Etch Multi-Agent Recommendation Report
+## 1. User Objective
+## 2. Input Summary
+## 3. Agents Executed
+| Agent | Status | Key Output | Limitation |
+|---|---|---|---|
+## 4. Recommendation Summary
+| Rank | Candidate / Direction | Evidence Level | Constraint Status | Suggested Action |
+|---|---|---|---|---|
+## 5. Mechanism Explanation
+## 6. Literature Support
+## 7. Data Optimization Result
+## 8. DOE Validation Plan
+## 9. Constraint Check
+## 10. Risks
+## 11. Next Steps
+## 12. Generated Files
+
+⸻
+
+12. 第一版最小可用系统定义
+
+第一版不要求所有 API 可用。只要满足以下条件，就可以认为框架已经初步可用：
+
+1. Etch Orchestrator 能根据用户目标拆解任务。
+2. 7 个 subagent 的职责边界清晰。
+3. API 不可用时不会伪造结果。
+4. DOE Agent 能生成通用编码矩阵。
+5. Constraint Agent 能输出 PASS / WARNING / FAIL / UNKNOWN。
+6. Integration Agent 能融合多源结果并标注证据等级。
+7. Report Agent 能生成完整 Markdown 报告。
+8. 后续真实 API 或仿真工具可以无缝替换 mock tool。
+
+⸻
+
+13. 总结建议
+
+第一版重点不是让每个 subagent 都“很聪明”，而是先保证系统结构正确、边界清晰、输出可信。
+
+推荐优先级如下：
+
+优先级 1：Etch Orchestrator + Skill 框架
+优先级 2：DOE Agent 本地工具
+优先级 3：Constraint Agent 规则框架
+优先级 4：Data API Adapter
+优先级 5：Literature API Adapter
+优先级 6：Mechanism Simulator Adapter
+优先级 7：Integration + Report 强化
+
+这套设计的核心原则是：
+
+Tool 做确定性执行；
+Subagent 做专家推理；
+Skill 做流程编排；
+Constraint Agent 做安全边界；
+Integration Agent 做证据仲裁；
+Report Agent 做可交付输出。
+
+你这版场景最关键的优化点是：不要让数据、机理、文献、DOE 直接互相覆盖结论，而是让它们都输出“证据片段”，再由 etch-integration 统一做证据分级和冲突仲裁。这样即使当前 API 都不成熟，也能先把流程跑起来，并且后续接入真实工具时不用推倒重做。
