@@ -1,0 +1,37 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "agent": {
+    "etch-orchestrator": {
+      "mode": "subagent",
+      "hidden": true
+    },
+    "etch-mechanism": {
+      "mode": "subagent",
+      "hidden": true
+    },
+    "etch-literature": {
+      "mode": "subagent",
+      "hidden": true
+    },
+    "etch-data": {
+      "mode": "subagent",
+      "hidden": true
+    },
+    "etch-doe": {
+      "mode": "subagent",
+      "hidden": true
+    },
+    "etch-blue-team": {
+      "mode": "subagent",
+      "hidden": true
+    },
+    "etch-triz": {
+      "mode": "subagent",
+      "hidden": true
+    },
+    "etch-summary": {
+      "mode": "subagent",
+      "hidden": true
+    }
+  }
+}
