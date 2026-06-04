@@ -1,0 +1,41 @@
+layer_type:
+  - LCH
+  - MCH
+parameters:
+  pressure:
+    type: numeric
+    min: null
+    max: null
+    unit: mTorr
+    source: "TBD by process owner"
+  source_power:
+    type: numeric
+    min: null
+    max: null
+    unit: W
+    source: "TBD by equipment/process owner"
+  bias_power:
+    type: numeric
+    min: null
+    max: null
+    unit: W
+    source: "TBD by equipment/process owner"
+  gas_flow:
+    type: numeric
+    min: null
+    max: null
+    unit: sccm
+    source: "TBD by process owner"
+constraints:
+  bias_cd:
+    min: null
+    max: null
+    source: "TBD"
+  bottom_cd:
+    min: null
+    max: null
+    source: "TBD"
+  max_cd:
+    min: null
+    max: null
+    source: "TBD"

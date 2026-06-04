@@ -1,0 +1,92 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "EtchMultiAgentInput",
+  "type": "object",
+  "required": ["layer_type", "task_type"],
+  "properties": {
+    "layer_type": {
+      "type": "string",
+      "enum": ["LCH", "MCH"],
+      "description": "Etch layer type"
+    },
+    "task_type": {
+      "type": "string",
+      "enum": [
+        "parameter_explanation",
+        "parameter_optimization",
+        "doe_design",
+        "literature_search",
+        "mechanism_analysis",
+        "integrated_solution"
+      ],
+      "description": "Type of task to perform"
+    },
+    "current_rcp": {
+      "type": "object",
+      "additionalProperties": { "type": "number" },
+      "description": "Current RCP parameter values"
+    },
+    "objectives": {
+      "type": "object",
+      "properties": {
+        "minimize": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "maximize": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "target": {
+          "type": "object",
+          "additionalProperties": { "type": "number" }
+        }
+      }
+    },
+    "constraints": {
+      "type": "object",
+      "properties": {
+        "Bias_CD": {
+          "type": "object",
+          "properties": {
+            "min": { "type": ["number", "null"] },
+            "max": { "type": ["number", "null"] }
+          }
+        },
+        "Bottom_CD": {
+          "type": "object",
+          "properties": {
+            "min": { "type": ["number", "null"] },
+            "max": { "type": ["number", "null"] }
+          }
+        },
+        "Max_CD": {
+          "type": "object",
+          "properties": {
+            "min": { "type": ["number", "null"] },
+            "max": { "type": ["number", "null"] }
+          }
+        }
+      }
+    },
+    "historical_data_path": {
+      "type": ["string", "null"],
+      "description": "Path to historical data file"
+    },
+    "doe_budget": {
+      "type": "object",
+      "properties": {
+        "max_runs": { "type": ["number", "null"] },
+        "allow_randomize": { "type": "boolean" }
+      }
+    },
+    "apis_enabled": {
+      "type": "object",
+      "properties": {
+        "literature": { "type": "boolean" },
+        "data_optimization": { "type": "boolean" },
+        "simulator": { "type": "boolean" }
+      }
+    }
+  }
+}

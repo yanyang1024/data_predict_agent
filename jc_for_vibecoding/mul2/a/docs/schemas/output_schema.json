@@ -1,0 +1,78 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "EtchMultiAgentOutput",
+  "type": "object",
+  "required": ["recommendations", "evidence_summary"],
+  "properties": {
+    "recommendations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "rank": { "type": "integer" },
+          "parameter_set": {
+            "type": "object",
+            "additionalProperties": { "type": "number" }
+          },
+          "predicted_metrics": {
+            "type": "object",
+            "additionalProperties": { "type": "number" }
+          },
+          "evidence_level": {
+            "type": "string",
+            "enum": ["A", "B", "C", "D", "E"]
+          },
+          "constraint_status": {
+            "type": "string",
+            "enum": ["PASS", "WARNING", "FAIL", "UNKNOWN"]
+          },
+          "supported_by": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "notes": { "type": "string" }
+        }
+      }
+    },
+    "evidence_summary": {
+      "type": "object",
+      "properties": {
+        "level_a_count": { "type": "integer" },
+        "level_b_count": { "type": "integer" },
+        "level_c_count": { "type": "integer" },
+        "level_d_count": { "type": "integer" },
+        "level_e_count": { "type": "integer" }
+      }
+    },
+    "agents_executed": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "agent": { "type": "string" },
+          "status": { "type": "string" },
+          "key_output": { "type": "string" },
+          "limitation": { "type": "string" }
+        }
+      }
+    },
+    "risks": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "next_steps": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "generated_files": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "path": { "type": "string" },
+          "description": { "type": "string" }
+        }
+      }
+    }
+  }
+}
