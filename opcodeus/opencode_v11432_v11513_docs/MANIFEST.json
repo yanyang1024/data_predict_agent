@@ -1,0 +1,20 @@
+{
+  "created_for": "OpenCode v1.14.32/v1.15.13 docs split and supplementation",
+  "files": [
+    "00_README.md",
+    "01_agent_evolution.md",
+    "02_opencode_runtime_architecture.md",
+    "03_config_hierarchy_and_models.md",
+    "04_tools_skills_commands_and_paths.md",
+    "05_permissions_and_safety_baseline.md",
+    "06_sop_workflow.md",
+    "07_troubleshooting_lag_context_loop.md",
+    "08_practical_tips_and_prompts.md",
+    "09_version_validation_notes.md",
+    "SOURCES.md",
+    "examples/skill-tool-path-example.md",
+    "templates/AGENTS.md",
+    "templates/global-opencode.jsonc",
+    "templates/project-opencode.jsonc"
+  ]
+}

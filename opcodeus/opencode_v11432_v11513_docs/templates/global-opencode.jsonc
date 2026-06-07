@@ -1,0 +1,114 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+
+  // Personal default model. Override per project if needed.
+  "model": "anthropic/claude-sonnet-4-20250514",
+
+  // Keep auto-update controlled in team environments.
+  "autoupdate": "notify",
+
+  // Optional provider restriction. Uncomment if you want an allowlist.
+  // "enabled_providers": ["anthropic", "openai", "openrouter", "myprovider"],
+
+  "provider": {
+    "anthropic": {
+      "options": {
+        "apiKey": "{env:ANTHROPIC_API_KEY}"
+      }
+    },
+    "openai": {
+      "options": {
+        "apiKey": "{env:OPENAI_API_KEY}"
+      }
+    }
+  },
+
+  "permission": {
+    "*": "ask",
+
+    "read": {
+      "*": "allow",
+      "*.env": "deny",
+      "*.env.*": "deny",
+      "**/.env": "deny",
+      "**/.env.*": "deny",
+      "*.env.example": "allow",
+      "**/*.pem": "deny",
+      "**/*.key": "deny"
+    },
+
+    "grep": "allow",
+    "glob": "allow",
+
+    "edit": "ask",
+
+    "bash": {
+      "*": "ask",
+
+      "pwd": "allow",
+      "ls *": "allow",
+      "rg *": "allow",
+      "grep *": "allow",
+      "cat *": "allow",
+
+      "git status*": "allow",
+      "git diff*": "allow",
+      "git log*": "allow",
+      "git branch*": "allow",
+      "git rev-parse*": "allow",
+
+      "npm test*": "ask",
+      "pnpm test*": "ask",
+      "bun test*": "ask",
+      "pytest*": "ask",
+      "cargo test*": "ask",
+      "go test*": "ask",
+      "pnpm typecheck*": "ask",
+      "pnpm lint*": "ask",
+
+      "git push*": "deny",
+      "git reset --hard*": "deny",
+      "git clean*": "deny",
+      "git checkout -- *": "deny",
+      "rm -rf*": "deny",
+      "sudo *": "ask",
+
+      "pkill *": "deny",
+      "killall *": "deny",
+      "taskkill *": "ask",
+      "kill *": "ask"
+    },
+
+    "external_directory": "ask",
+    "doom_loop": "ask",
+    "webfetch": "ask",
+    "websearch": "ask",
+
+    "skill": {
+      "*": "ask",
+      "project-*": "allow",
+      "internal-*": "ask",
+      "experimental-*": "deny"
+    }
+  },
+
+  "compaction": {
+    "auto": true,
+    "prune": true,
+    "reserved": 10000
+  },
+
+  "watcher": {
+    "ignore": [
+      "node_modules/**",
+      "dist/**",
+      "build/**",
+      ".git/**",
+      "coverage/**",
+      ".next/**",
+      ".turbo/**",
+      "target/**",
+      "logs/**"
+    ]
+  }
+}
