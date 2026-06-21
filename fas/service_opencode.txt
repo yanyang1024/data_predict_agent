@@ -1,0 +1,69 @@
+我在构建一版 基于opencode和大模型的推理服务,对外服务提供API接口（openai v1兼容推理接口等）；核心动机 后台给每个应用场景配置一个opencode server (相当于opencode的用户级配置 ；每个应用场景当作用户)。针对应用场景的每次请求，后台先跑一遍 Agent、查资料、验证、推演，最后再把结果返回。
+
+我当前的实现：
+实现了一版隔离完善的多租户 AI agent 服务：
+- 隔离：bwrap 多层 mount（deny-all-then-restore），应用间完全不可见
+- 懒加载策略合理：实例懒启动、OpenCode session 懒创建、文件上下文自动继承
+- API 设计 OpenAI 兼容：统一 /v1/chat/completions 入口，Proxy 旧端点作为 thin adapter
+- Admin Dashboard 完整：应用管理、共用文件模板、用量统计、OpenCode Web 跳转
+
+---
+
+隔离方式和实现：
+
+- bwrap 沙箱隔离（start_agent.sh）
+- --ro-bind / / ← 全盘只读基底
+- --ro-bind /dev/null /etc/shadow ← 掩码敏感文件
+- --tmpfs /home ← 整体隔离 /home
+- --bind {app_dir}/home /home/flash-agent-svc ← 恢复应用专属目录
+- --ro-bind {ENVS}/opencode-config-DEFAULT /.config/opencode ← 共享配置只读覆盖
+- --bind {app_dir}/tmp /tmp ← 应用专属临时目录
+- --bind {app_dir}/python_env ← 应用专属 Python venv
+- --unshare-pid, --unshare-ipc, --die-with-parent, --new-session ← 命名空间隔离
+- 应用间完全不可见（/home 是 tmpfs，只 mount 自己的目录）
+- 系统文件只读，只能写自己的 workspace/tmp/python_env
+- 首次启动自动创建 Python venv
+
+---
+
+opencode 交互设计和实现：
+
+- OpenCode 交互（opencode.py）
+- OpenCodeClient：每应用独立实例，维护内存状态
+- session_status, active_streams, session_todos, SSE 订阅：stream_chat() 订阅 /event 端点，解析 message.part.updated / message.part.delta / question.asked / session.idle 等事件类型
+- part_registry：用 part_id → {type, call_id} 映射来关联 delta 事件与 part 类型（text/reasoning/tool）
+- call_id → request_id：question.asked 事件建立映射，后续 tool 事件可关联回 request_id
+- 中止机制：设 abort 标志 → 调 OpenCode /session/{id}/abort → 拒绝 pending questions → 关闭 SSE HTTP 连接
+- 懒绑定：首次发消息才创建 OpenCode session（/session POST），不发消息不分配资源
+- Session 懒绑定 + 文件上下文自动继承
+- ensure_session_with_files()：
+  - 有 file_ids → 批量查 DB → 推导 session_id → 校验跨 session → 返回文件记录
+  - 无 file_ids 但有 session → 查 AppFileUpload 中该 session 的历史文件 → 自动继承
+  - 无 session → 新建 session + 创建 workspace + shared/ 增量复制
+- 共用文件模板（workspace.py）
+- shared/ 目录（Admin 上传）
+- provision_session_workspace() 时
+- copy_shared_to_session() — 增量复制（跳过已有文件，保护 session 内编辑）
+- workspace/{session_id}/ 中可用
+
+---
+
+技术栈：
+
+- 进程隔离：Bubblewrap (bwrap)
+- 数据库：MariaDB
+- Python环境：3.12 + venv per-app
+- 进程管理：systemd user-level
+- 前端：React 18 + Vite 6 + Ant Design 5
+- 认证：bcrypt
+- HTTP客户端：httpx
+- MySQL驱动：PyMySQL
+- ORM：SQLAlchemy 2.x
+
+
+
+
+
+
+
+
